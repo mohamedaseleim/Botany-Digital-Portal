@@ -1,0 +1,5 @@
+{
+  "name": "Botany Digital Archive",
+  "description": "نظام الأرشفة الإدارية الرقمية لقسم النبات الزراعي - نظام هجين (Firebase + Google Drive)",
+  "requestFramePermissions": []
+}
