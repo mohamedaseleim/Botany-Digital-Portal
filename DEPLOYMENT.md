@@ -1,127 +1,191 @@
-# دليل نشر وتشغيل بوابة قسم النبات الزراعي (Deployment Guide)
+# الدليل الشامل لنشر "بوابة قسم النبات" على GitHub Pages
+## دليل للمبتدئين (خطوة بخطوة)
 
-هذا المستند يشرح الخطوات التقنية لرفع تطبيق "بوابة قسم النبات" (Botany Digital Portal) على استضافة **GitHub Pages** المجانية، وكيفية إعداد بيئة العمل للإنتاج.
-
----
-
-## 1. المتطلبات الأساسية (Prerequisites)
-
-قبل البدء، تأكد من تثبيت الأدوات التالية على جهاز الكمبيوتر:
-*   **Node.js** (الإصدار 16 أو أحدث).
-*   **Git** (لإدارة النسخ ورفع الكود).
-*   حساب على منصة **GitHub**.
+هذا الملف يشرح بالتفصيل الممل كيفية أخذ الكود الموجود على جهازك (أو على GitHub) وجعله موقعاً حياً يعمل على الإنترنت مجاناً، وكيفية تحويله من نظام "تجريبي" إلى نظام "حقيقي" متصل بقاعدة بيانات.
 
 ---
 
-## 2. إعداد المشروع للنشر (Configuration)
+## المرحلة الأولى: تجهيز البيئة (على جهاز الكمبيوتر)
 
-التطبيق مبني باستخدام **React.js**. لنشره على GitHub Pages، نحتاج لإضافة مكتبة مساعدة وإعداد ملف `package.json`.
+قبل أن تفعل أي شيء بالكود، تأكد أن جهاز الكمبيوتر الخاص بك يحتوي على البرامج الأساسية للبرمجة.
 
-### أ. تثبيت مكتبة النشر
-افتح الشاشة السوداء (Terminal) داخل مجلد المشروع واكتب الأمر التالي:
+### 1. تثبيت Node.js
+هو المحرك الذي يشغل كود الموقع.
+*   حمل البرنامج من هنا: [nodejs.org](https://nodejs.org).
+*   اختر نسخة **LTS** (Recommended for most users).
+*   ثبته مثل أي برنامج عادي (Next, Next, Finish).
 
+### 2. تثبيت Git
+أداة رفع الملفات إلى GitHub.
+*   حمل البرنامج من: [git-scm.com](https://git-scm.com).
+*   ثبته بالإعدادات الافتراضية.
+
+### 3. برنامج تعديل الكود (VS Code)
+*   يفضل استخدام [Visual Studio Code](https://code.visualstudio.com).
+
+---
+
+## المرحلة الثانية: إعداد المشروع للنشر
+
+الآن سنقوم بضبط إعدادات المشروع ليقبل العمل على خوادم GitHub.
+
+### خطوة 1: فتح المشروع
+1.  افتح مجلد المشروع في VS Code.
+2.  من القائمة العلوية، اضغط `Terminal` ثم `New Terminal`.
+
+### خطوة 2: تثبيت المكتبات
+اكتب هذا الأمر في الشاشة السوداء (Terminal) واضغط Enter:
+```bash
+npm install
+```
+*انتظر حتى ينتهي التحميل.*
+
+ثم ثبت مكتبة النشر الخاصة بـ GitHub:
 ```bash
 npm install gh-pages --save-dev
 ```
 
-### ب. تعديل ملف `package.json`
-افتح ملف `package.json` وأضف السطر التالي في الأعلى (استبدل البيانات بما يناسب حسابك):
+### خطوة 3: تعديل ملف `package.json`
+ابحث عن ملف اسمه `package.json` في قائمة الملفات، وافتحه.
 
+**أضف السطر التالي في أول الملف** (تحت الاسم والاصدار):
 ```json
-"homepage": "https://{username}.github.io/{repo-name}",
+"homepage": "https://{USERNAME}.github.io/{REPO-NAME}",
 ```
-*   `{username}`: اسم المستخدم الخاص بك على GitHub.
-*   `{repo-name}`: اسم المستودع (Repository) الذي ستنشئه (مثلاً: `botany-portal`).
+*   استبدل `{USERNAME}` باسم حسابك على GitHub.
+*   استبدل `{REPO-NAME}` باسم المستودع الذي ستنشئه (مثلاً `botany-portal`).
 
-### ج. إضافة أوامر النشر (Scripts)
-في نفس الملف `package.json`، داخل قسم `"scripts"`، أضف السطرين التاليين:
-
+**أضف أوامر النشر في قسم `scripts`**:
+ابحث عن `"scripts": {` وأضف هذين السطرين داخله:
 ```json
-"scripts": {
-  "predeploy": "npm run build",
-  "deploy": "gh-pages -d build",
-  ... (باقي الأوامر)
-}
+"predeploy": "npm run build",
+"deploy": "gh-pages -d dist"
 ```
+*(ملاحظة: إذا كان المشروع مبنياً بـ Create React App استخدم `build` بدلاً من `dist` في السطر الأخير. إذا كان Vite استخدم `dist`)*.
 
 ---
 
-## 3. رفع الكود والنشر (Deployment Steps)
+## المرحلة الثالثة: الرفع إلى GitHub (Push)
 
-### الخطوة 1: إنشاء مستودع على GitHub
-1.  ادخل على [GitHub.com](https://github.com) وقم بإنشاء **New Repository**.
-2.  سمّهِ بنفس الاسم الذي وضعته في الـ `homepage` (مثلاً `botany-portal`).
-3.  اجعل المستودع **Public** (أو Private إذا كنت تملك حساب GitHub Pro وتريد إخفاء الكود).
+### 1. إنشاء المستودع (Repository)
+1.  ادخل على حسابك في [GitHub.com](https://github.com).
+2.  اضغط علامة `+` في الأعلى واختر **New repository**.
+3.  في خانة **Repository name** اكتب نفس الاسم الذي اخترته سابقاً (مثلاً `botany-portal`).
+4.  اضغط **Create repository**.
 
-### الخطوة 2: ربط المشروع ورفعه
-في الـ Terminal، نفذ الأوامر التالية لرفع الكود لأول مرة:
+### 2. رفع الملفات
+ارجع للـ Terminal في VS Code واكتب الأوامر التالية بالترتيب (اضغط Enter بعد كل أمر):
 
 ```bash
 git init
 git add .
-git commit -m "Initial commit - Botany Portal V1"
+git commit -m "رفع النسخة الأولى للموقع"
 git branch -M main
-git remote add origin https://github.com/{username}/{repo-name}.git
+git remote add origin https://github.com/{USERNAME}/{REPO-NAME}.git
 git push -u origin main
 ```
+*(سيطلب منك تسجيل الدخول لحساب GitHub إذا كانت أول مرة)*.
 
-### الخطوة 3: تنفيذ أمر النشر
-الآن، لرفع النسخة الحية (Live Version) على الرابط المجاني، اكتب:
+---
+
+## المرحلة الرابعة: النشر الفعلي (Deploy)
+
+الآن الكود موجود على GitHub، لكنه لا يعمل كموقع بعد. لنشره، اكتب هذا الأمر السحري في الـ Terminal:
 
 ```bash
 npm run deploy
 ```
-*   سيقوم هذا الأمر ببناء المشروع (Build) وإنشاء فرع جديد اسمه `gh-pages` يحتوي على ملفات الموقع الجاهزة.
 
-### الخطوة 4: تفعيل الاستضافة
-1.  اذهب إلى إعدادات المستودع (Settings) على GitHub.
-2.  اختر **Pages** من القائمة الجانبية.
-3.  في قسم **Build and deployment**، تأكد أن المصدر (Source) هو `Deploy from a branch`.
-4.  اختر الفرع `gh-pages` والمجلد `/(root)`.
-5.  اضغط **Save**.
-6.  خلال دقائق، سيظهر رابط موقعك في الأعلى (مثلاً: `https://ahmed-azhar.github.io/botany-portal`).
+انتظر حتى تظهر رسالة `Published`.
+
+### تفعيل الموقع:
+1.  اذهب لصفحة المشروع على موقع GitHub.
+2.  ادخل على **Settings** (الإعدادات) > ثم **Pages** (من القائمة الجانبية).
+3.  تأكد أن الـ **Source** هو `Deploy from a branch`.
+4.  تأكد أن الـ **Branch** المختار هو `gh-pages` (وليس main).
+5.  انتظر دقيقتين، وستجد الرابط ظهر في أعلى الصفحة (مثلاً: `https://ali.github.io/botany-portal`).
+6.  **مبروك! التطبيق يعمل الآن.**
 
 ---
 
-## 4. ملاحظة هامة جداً: قاعدة البيانات (Database)
+## المرحلة الخامسة (متقدم): تحويل البيانات من "وهمية" إلى "حقيقية" (Firebase)
 
-⚠️ **الوضع الحالي (Demo Mode):**
-الكود المرفوع حالياً يعتمد على `LocalStorage` في ملف `services/dbService.ts`. هذا يعني أن البيانات التي يتم إدخالها (المكاتبات، الطلاب، المستخدمين) **تُحفظ فقط على متصفح المستخدم الحالي**.
-*   إذا دخل رئيس القسم من جهازه، لن يرى البيانات التي أدخلها السكرتير من جهاز آخر.
+⚠️ **هام:** التطبيق حالياً يعمل ببيانات وهمية (تختفي عند تغيير المتصفح). لجعله يحتفظ بالبيانات لكل المستخدمين، يجب ربطه بـ **Google Firebase**.
 
-✅ **الوضع المطلوب (Production Mode - Firebase):**
-لجعل النظام يعمل كشبكة موحدة (Centralized) يراها الجميع، يجب استبدال الـ LocalStorage بخدمة **Firebase Firestore** المجانية.
+### 1. إنشاء قاعدة البيانات
+1.  ادخل على [console.firebase.google.com](https://console.firebase.google.com).
+2.  اضغط **Add project** وسمه `botany-db`.
+3.  من القائمة الجانبية، اختر **Build** > **Firestore Database**.
+4.  اضغط **Create Database** > اختر **Start in production mode**.
+5.  اختر السيرفر (مثلاً `eur3` أوروبا).
 
-### خطوات الترقية إلى Firebase:
+### 2. الحصول على مفاتيح الربط
+1.  اضغط على أيقونة الترس (Settings) > **Project settings**.
+2.  في الأسفل، اختر أيقونة الويب `</>`.
+3.  سجل التطبيق باسم `BotanyApp`.
+4.  سيظهر لك كود (`const firebaseConfig = ...`). انسخ هذا الكود.
 
-1.  اذهب إلى [Firebase Console](https://console.firebase.google.com) وأنشئ مشروعاً جديداً.
-2.  فعل خدمة **Cloud Firestore** و **Authentication**.
-3.  انسخ إعدادات الاتصال (Config) وضعها في ملف جديد `src/firebaseConfig.ts`.
-4.  قم بتحديث ملف `src/services/dbService.ts` لاستخدام دوال Firebase بدلاً من LocalStorage.
-
-**مثال للتعديل البرمجي المطلوب في `dbService.ts`:**
+### 3. إضافة الكود في المشروع
+ارجع إلى VS Code:
+1.  أنشئ ملفاً جديداً في مجلد `src` سمه `firebaseConfig.ts`.
+2.  الصق الكود الذي نسخته، واجعل نهايته كالتالي:
 
 ```typescript
-// بدلاً من:
-// const docs = getLocalData(ARCHIVE_KEY, []);
+import { initializeApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
 
-// نستخدم Firebase:
-// import { db } from '../firebaseConfig';
-// import { collection, getDocs } from 'firebase/firestore';
-// const querySnapshot = await getDocs(collection(db, "archive"));
+const firebaseConfig = {
+  apiKey: "AIzaSyB...",
+  authDomain: "...",
+  projectId: "...",
+  storageBucket: "...",
+  messagingSenderId: "...",
+  appId: "..."
+};
+
+const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app); // تصدير قاعدة البيانات لاستخدامها
 ```
 
----
+### 4. تعديل ملف `dbService.ts`
+الآن، الخطوة الأخيرة والأهم. سنستبدل التخزين المحلي (LocalStorage) بـ Firebase.
+افتح `src/services/dbService.ts`:
 
-## 5. إدارة الملفات (Google Drive Integration)
+**أضف في الأعلى:**
+```typescript
+import { db } from '../firebaseConfig';
+import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where } from 'firebase/firestore';
+```
 
-للحفاظ على مجانية الاستضافة وتوفير مساحة غير محدودة للمستندات (PDFs/Images):
-1.  يتم استخدام **Google Apps Script** كواجهة (API) لرفع الملفات إلى مجلد Google Drive خاص بالقسم.
-2.  الرابط الناتج من الرفع يتم تخزينه كنص (String) في قاعدة بيانات Firebase.
-3.  هذا يضمن عدم استهلاك سعة تخزين Firebase المدفوعة.
+**مثال لتغيير دالة الجلب (Get):**
+بدلاً من الكود القديم، استخدم هذا:
+```typescript
+export const getDocuments = async (type?: DocType): Promise<ArchiveDocument[]> => {
+  const querySnapshot = await getDocs(collection(db, "archive"));
+  let docs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ArchiveDocument));
+  
+  if (type) {
+    docs = docs.filter(d => d.type === type);
+  }
+  return docs.sort((a, b) => b.createdAt - a.createdAt);
+};
+```
 
----
+**مثال لتغيير دالة الإضافة (Add):**
+```typescript
+export const addDocument = async (data: any) => {
+  await addDoc(collection(db, "archive"), {
+    ...data,
+    createdAt: Date.now()
+  });
+};
+```
 
-## 6. الدعم الفني
+كرر هذا النمط لباقي الدوال (Delete, Update) وباقي المجموعات (students, staff, assets).
 
-في حالة وجود أي مشكلة في النشر أو الرغبة في تفعيل Firebase، يرجى التواصل مع فريق التطوير أو مراجعة وثائق [Create React App Deployment](https://create-react-app.dev/docs/deployment/#github-pages).
+### 5. تحديث الموقع
+بعد تعديل الكود، اكتب مرة أخرى:
+```bash
+npm run deploy
+```
+الآن أصبح لديك نظام إداري كامل، مجاني، ومربوط بقاعدة بيانات سحابية!
