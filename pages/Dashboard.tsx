@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { FileInput, FileOutput, Calendar, AlertTriangle, RefreshCcw, CheckCircle2, Clock, Users, ClipboardList } from 'lucide-react';
+import { FileInput, FileOutput, Calendar, AlertTriangle, RefreshCcw, CheckCircle2, Clock, Users, ClipboardList, GraduationCap, Briefcase } from 'lucide-react';
 import { StatCard } from '../components/StatCard';
 import { getStats, getDocuments } from '../services/dbService';
 import { DashboardStats, ArchiveDocument, DocType } from '../types';
@@ -41,7 +41,7 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-800">لوحة القيادة</h1>
+        <h1 className="text-2xl font-bold text-gray-800">لوحة القيادة المركزية</h1>
         <button onClick={fetchData} className="text-sm text-green-600 hover:underline flex items-center gap-1">
           <RefreshCcw className="w-4 h-4" /> تحديث
         </button>
@@ -54,15 +54,18 @@ export const Dashboard: React.FC = () => {
         <StatCard title="اجتماعات اللجان" value={stats.totalCommittees} icon={ClipboardList} color="amber" />
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-         <StatCard title="مكاتبات اليوم" value={stats.todayCount} icon={Calendar} color="green" />
-         <StatCard title="تحتاج متابعة" value={stats.unansweredCount} icon={AlertTriangle} color="blue" />
+      {/* Portal Stats Row */}
+      <h3 className="font-bold text-gray-700 mt-4">إحصائيات مجتمع القسم</h3>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+         <StatCard title="أعضاء هيئة التدريس" value={stats.totalStaff} icon={Users} color="green" />
+         <StatCard title="طلاب الدراسات العليا" value={stats.totalStudentsPG} icon={GraduationCap} color="blue" />
+         <StatCard title="شبكة الخريجين" value={stats.totalAlumni} icon={Briefcase} color="purple" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
         {/* Recent Activity Table */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h3 className="font-bold text-gray-800 mb-4">أحدث الأنشطة</h3>
+          <h3 className="font-bold text-gray-800 mb-4">أحدث المكاتبات الإدارية</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-right">
               <thead>
@@ -111,7 +114,7 @@ export const Dashboard: React.FC = () => {
 
         {/* Chart */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 min-h-[300px]">
-          <h3 className="font-bold text-gray-800 mb-4">إحصائيات الأرشيف</h3>
+          <h3 className="font-bold text-gray-800 mb-4">نشاط القسم</h3>
           <ResponsiveContainer width="100%" height={250}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />

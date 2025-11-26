@@ -1,5 +1,5 @@
 {
-  "name": "Botany Digital Archive",
-  "description": "نظام الأرشفة الإدارية الرقمية لقسم النبات الزراعي - نظام هجين (Firebase + Google Drive)",
+  "name": "Botany Digital Portal",
+  "description": "البوابة الرقمية الشاملة لقسم النبات الزراعي - إدارة الأرشيف، الطلاب، والخريجين",
   "requestFramePermissions": []
 }

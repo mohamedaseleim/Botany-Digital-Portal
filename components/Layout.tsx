@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
@@ -9,7 +10,13 @@ import {
   LogOut, 
   Leaf,
   Users,
-  ClipboardList
+  ClipboardList,
+  GraduationCap,
+  BookOpen,
+  Briefcase,
+  UserCircle,
+  UserCog,
+  FileClock
 } from 'lucide-react';
 import { User, UserRole } from '../types';
 
@@ -25,14 +32,78 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
 
   const isActive = (path: string) => location.pathname === path;
 
-  const navItems = [
-    { path: '/', label: 'لوحة القيادة', icon: LayoutDashboard },
-    { path: '/outgoing', label: 'الصادر', icon: FileOutput },
-    { path: '/incoming', label: 'الوارد', icon: FileInput },
-    { path: '/councils', label: 'مجالس القسم', icon: Users },
-    { path: '/committees', label: 'لجان القسم', icon: ClipboardList },
-    { path: '/search', label: 'البحث والاستعلام', icon: Search },
+  // Define all possible navigation items
+  const allNavItems = [
+    { 
+      path: '/', 
+      label: 'لوحة القيادة', 
+      icon: LayoutDashboard, 
+      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.DATA_ENTRY] 
+    },
+    { 
+      path: '/outgoing', 
+      label: 'الصادر', 
+      icon: FileOutput, 
+      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.DATA_ENTRY] 
+    },
+    { 
+      path: '/incoming', 
+      label: 'الوارد', 
+      icon: FileInput, 
+      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.DATA_ENTRY] 
+    },
+    { 
+      path: '/councils', 
+      label: 'مجالس القسم', 
+      icon: Users, 
+      roles: [UserRole.ADMIN, UserRole.STAFF] 
+    },
+    { 
+      path: '/committees', 
+      label: 'لجان القسم', 
+      icon: ClipboardList, 
+      roles: [UserRole.ADMIN, UserRole.STAFF] 
+    },
+    { 
+        path: '/pg-manager', 
+        label: 'مدير الدراسات العليا', 
+        icon: FileClock, 
+        roles: [UserRole.ADMIN, UserRole.STAFF] 
+    },
+    { 
+      path: '/staff', 
+      label: 'هيئة التدريس', 
+      icon: UserCircle, 
+      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.STUDENT_PG, UserRole.STUDENT_UG] 
+    },
+    { 
+      path: '/students', 
+      label: 'بوابة الطلاب', 
+      icon: BookOpen, 
+      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.STUDENT_PG, UserRole.STUDENT_UG] 
+    },
+    { 
+      path: '/alumni', 
+      label: 'رابطة الخريجين', 
+      icon: Briefcase, 
+      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.ALUMNI] 
+    },
+    { 
+      path: '/users', 
+      label: 'إدارة المستخدمين', 
+      icon: UserCog, 
+      roles: [UserRole.ADMIN] 
+    },
+    { 
+      path: '/search', 
+      label: 'البحث والاستعلام', 
+      icon: Search, 
+      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.DATA_ENTRY] 
+    },
   ];
+
+  // Filter items based on user role
+  const navItems = allNavItems.filter(item => item.roles.includes(user.role));
 
   return (
     <div className="min-h-screen flex bg-gray-50">
@@ -57,12 +128,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
             <Leaf className="w-6 h-6 text-green-700" />
           </div>
           <div>
-            <h1 className="font-bold text-lg">أرشيف قسم النبات</h1>
+            <h1 className="font-bold text-sm">بوابة قسم النبات الزراعي</h1>
             <p className="text-xs text-green-300">جامعة الأزهر - أسيوط</p>
           </div>
         </div>
 
-        <nav className="mt-6 px-4 space-y-2">
+        <nav className="mt-6 px-4 space-y-2 overflow-y-auto max-h-[calc(100vh-180px)] custom-scrollbar">
           {navItems.map((item) => (
             <Link
               key={item.path}
@@ -81,15 +152,18 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
           ))}
         </nav>
 
-        <div className="absolute bottom-0 w-full p-4 border-t border-green-800">
+        <div className="absolute bottom-0 w-full p-4 border-t border-green-800 bg-green-900">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full bg-green-700 flex items-center justify-center font-bold text-lg">
+            <div className="w-10 h-10 rounded-full bg-green-700 flex items-center justify-center font-bold text-lg border-2 border-green-600">
               {user.name.charAt(0)}
             </div>
             <div className="overflow-hidden">
               <p className="font-medium text-sm truncate">{user.name}</p>
               <p className="text-xs text-green-300 truncate">
-                {user.role === UserRole.ADMIN ? 'رئيس القسم (مدير)' : 'سكرتارية (مدخل بيانات)'}
+                {user.role === UserRole.ADMIN ? 'مدير النظام' : 
+                 user.role === UserRole.STAFF ? 'عضو هيئة تدريس' :
+                 user.role === UserRole.STUDENT_PG ? 'دراسات عليا' :
+                 user.role === UserRole.STUDENT_UG ? 'طالب' : 'خريج'}
               </p>
             </div>
           </div>
@@ -107,7 +181,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Mobile Header */}
         <header className="bg-white shadow-sm lg:hidden flex items-center justify-between p-4 z-10">
-          <h2 className="font-bold text-gray-800">أرشيف قسم النبات الزراعي</h2>
+          <h2 className="font-bold text-gray-800 text-sm">بوابة قسم النبات الزراعي</h2>
           <button 
             onClick={() => setSidebarOpen(true)}
             className="p-2 rounded-md hover:bg-gray-100 text-gray-600"
