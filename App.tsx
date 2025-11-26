@@ -13,6 +13,11 @@ import { StudentPortal } from './pages/StudentPortal';
 import { AlumniPortal } from './pages/AlumniPortal';
 import { UserManagement } from './pages/UserManagement';
 import { PostgraduateManager } from './pages/PostgraduateManager';
+import { Inventory } from './pages/Inventory';
+import { Labs } from './pages/Labs'; 
+import { Greenhouse } from './pages/Greenhouse';
+import { Events } from './pages/Events';
+import { ActivityLogs } from './pages/ActivityLogs'; // New Import
 import { User, UserRole } from './types';
 import { loginUser } from './services/dbService';
 import { Lock, Sprout, GraduationCap, Users, BookOpen, Briefcase, Key, Loader2, ArrowLeft } from 'lucide-react';
@@ -144,6 +149,14 @@ const App: React.FC = () => {
           <Route path="/alumni" element={<AlumniPortal user={user} />} />
           <Route path="/users" element={<UserManagement />} />
           <Route path="/pg-manager" element={<PostgraduateManager />} />
+          
+          {/* Updated Routes to pass user prop for logging */}
+          <Route path="/inventory" element={<Inventory user={user} />} />
+          <Route path="/labs" element={<Labs user={user} />} />
+          <Route path="/greenhouse" element={<Greenhouse user={user} />} />
+          <Route path="/events" element={<Events user={user} />} />
+          
+          <Route path="/activity-log" element={<ActivityLogs />} />
           
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>

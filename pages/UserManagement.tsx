@@ -8,7 +8,8 @@ import {
   addStaff, updateStaff, deleteStaff,
   addPGStudent, updatePGStudent, deletePGStudent,
   addUGStudent, updateUGStudent, deleteUGStudent,
-  addAlumni, updateAlumni, deleteAlumni
+  addAlumni, updateAlumni, deleteAlumni,
+  logActivity // Import Log Activity
 } from '../services/dbService';
 
 export const UserManagement: React.FC = () => {
@@ -110,7 +111,7 @@ export const UserManagement: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, name: string) => {
     if (!window.confirm('هل أنت متأكد من حذف هذا المستخدم؟')) return;
     
     if (activeTab === 'STAFF') await deleteStaff(id);
@@ -118,6 +119,9 @@ export const UserManagement: React.FC = () => {
     else if (activeTab === 'UG') await deleteUGStudent(id);
     else if (activeTab === 'ALUMNI') await deleteAlumni(id);
     
+    // LOG
+    logActivity('حذف مستخدم', 'Admin', `تم حذف المستخدم: ${name} من فئة ${activeTab}`);
+
     fetchData();
   };
 
@@ -134,12 +138,37 @@ export const UserManagement: React.FC = () => {
       if (editingId) await updateStaff(editingId, data); else await addStaff(data as any);
 
     } else if (activeTab === 'PG') {
-      const data = {
-        name: formData.name, degree: formData.degree, researchTopic: formData.researchTopic, supervisor: formData.supervisor, status: formData.status,
-        registrationDate: new Date().toISOString().split('T')[0],
-        username: formData.username, password: formData.password
-      };
-      if (editingId) await updatePGStudent(editingId, data as any); else await addPGStudent(data as any);
+      
+      if (editingId) {
+          const data = {
+            name: formData.name, degree: formData.degree, researchTopic: formData.researchTopic, 
+            supervisor: formData.supervisor, status: formData.status,
+            username: formData.username, password: formData.password
+          };
+          await updatePGStudent(editingId, data as any);
+      } else {
+          const data = {
+            name: formData.name, degree: formData.degree, researchTopic: formData.researchTopic, 
+            supervisor: formData.supervisor, status: formData.status,
+            username: formData.username, password: formData.password,
+            dates: {
+                enrollment: new Date().toISOString().split('T')[0],
+                registration: '',
+                lastReport: '',
+                nextReportDue: '',
+                expectedDefense: ''
+            },
+            documents: {
+                publishedPapers: [],
+                otherDocuments: []
+            },
+            alerts: {
+                reportOverdue: false,
+                extensionNeeded: false
+            }
+          };
+          await addPGStudent(data as any);
+      }
 
     } else if (activeTab === 'UG') {
       const data = {
@@ -156,6 +185,9 @@ export const UserManagement: React.FC = () => {
       if (editingId) await updateAlumni(editingId, data); else await addAlumni(data as any);
     }
     
+    // LOG
+    logActivity(editingId ? 'تعديل بيانات مستخدم' : 'إضافة مستخدم جديد', 'Admin', `تم ${editingId ? 'تعديل' : 'إضافة'} المستخدم: ${formData.name} في فئة ${activeTab}`);
+
     setIsModalOpen(false);
     fetchData();
   };
@@ -251,7 +283,7 @@ export const UserManagement: React.FC = () => {
                         <button onClick={() => handleOpenModal(item)} className="text-blue-600 hover:bg-blue-50 p-2 rounded-lg" title="تعديل">
                           <Edit className="w-4 h-4" />
                         </button>
-                        <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:bg-red-50 p-2 rounded-lg" title="حذف">
+                        <button onClick={() => handleDelete(item.id, item.name)} className="text-red-600 hover:bg-red-50 p-2 rounded-lg" title="حذف">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </td>

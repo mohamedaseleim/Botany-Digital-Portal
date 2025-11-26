@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Briefcase, UserPlus, Building, Settings, X, Save, Loader2, PlusCircle, Edit, Trash2, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { JobOpportunity, User, UserRole, JobStatus } from '../types';
-import { getJobs, addAlumni, addJob, updateJob, deleteJob } from '../services/dbService';
+import { getJobs, addAlumni, addJob, updateJob, deleteJob, logActivity } from '../services/dbService';
 
 interface AlumniPortalProps {
     user?: User;
@@ -70,6 +70,11 @@ export const AlumniPortal: React.FC<AlumniPortalProps> = ({ user }) => {
         username: alumniForm.email.split('@')[0], 
         password: '123' 
       });
+      
+      // Log activity (If user is logged in, use their name, otherwise use 'Guest' or the new alumni name)
+      const performer = user?.name || alumniForm.name;
+      logActivity('تسجيل خريج جديد', performer, `تم تسجيل: ${alumniForm.name} - دفعة ${alumniForm.graduationYear}`);
+
       alert('تم تسجيل بياناتك بنجاح! شكراً لانضمامك لرابطة الخريجين.');
       setIsRegisterModalOpen(false);
       setAlumniForm({ name: '', graduationYear: '', currentJob: '', email: '', phone: '' });
@@ -110,11 +115,14 @@ export const AlumniPortal: React.FC<AlumniPortalProps> = ({ user }) => {
   const handleJobSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
+    const performer = user?.name || 'Unknown';
     try {
       if (editingJobId) {
         await updateJob(editingJobId, jobForm);
+        logActivity('تعديل فرصة عمل', performer, `الوظيفة: ${jobForm.title}`);
       } else {
         await addJob(jobForm);
+        logActivity('نشر فرصة عمل', performer, `الوظيفة: ${jobForm.title} - الشركة: ${jobForm.company}`);
       }
       setIsJobModalOpen(false);
       fetchJobs();
@@ -136,7 +144,9 @@ export const AlumniPortal: React.FC<AlumniPortalProps> = ({ user }) => {
     
     setSubmitting(true);
     try {
+        const job = jobs.find(j => j.id === jobToDelete);
         await deleteJob(jobToDelete);
+        logActivity('حذف فرصة عمل', user?.name || 'Unknown', `تم حذف الوظيفة: ${job?.title}`);
         setJobs(prevJobs => prevJobs.filter(job => job.id !== jobToDelete));
         setIsDeleteModalOpen(false);
         setJobToDelete(null);

@@ -23,6 +23,14 @@ export interface User {
   details?: string; // e.g., "أستاذ أمراض النبات"
 }
 
+export interface ActivityLogItem {
+  id: string;
+  action: string; // e.g., "تسجيل دخول", "حذف مستخدم"
+  performedBy: string; // User Name
+  timestamp: string; // ISO Date Time
+  details: string; // "Deleted user Ahmed"
+}
+
 export interface ArchiveDocument {
   id: string;
   type: DocType;
@@ -205,11 +213,32 @@ export interface AlumniMember {
 export interface CourseMaterial {
   id: string;
   title: string;
-  year: 'Third' | 'Fourth';
+  // Updated year type to include PG levels
+  year: 'Third' | 'Fourth' | 'Pre-Master' | 'Pre-PhD';
   description?: string;
   fileUrl: string;
   uploadedBy: string;
   date: string;
+}
+
+// --- Schedules (Lectures & Exams) ---
+export type ScheduleType = 'LECTURE' | 'EXAM';
+
+export interface ScheduleItem {
+    id: string;
+    title: string;
+    type: ScheduleType;
+    year: 'Third' | 'Fourth' | 'Pre-Master' | 'Pre-PhD';
+    fileUrl: string; // Often an image
+    uploadedBy: string;
+    date: string;
+}
+
+export interface Announcement {
+    id: string;
+    content: string;
+    date: string;
+    isImportant?: boolean;
 }
 
 export type JobStatus = 'OPEN' | 'CLOSED';
@@ -222,6 +251,94 @@ export interface JobOpportunity {
   datePosted: string;
   contactInfo: string;
   status?: JobStatus; // Added status field
+}
+
+// --- Inventory System Interfaces ---
+
+export type AssetStatus = 'WORKING' | 'MAINTENANCE' | 'BROKEN';
+
+export interface Asset {
+  id: string;
+  name: string;
+  model: string;
+  serialNumber: string;
+  status: AssetStatus;
+  location: string;
+  assignedTo: string;
+  dateAcquired: string;
+  createdAt: number;
+}
+
+// --- Lab Management & Scheduling ---
+export interface Lab {
+    id: string;
+    name: string;
+    supervisor: string;
+    location: string;
+    // Lab schedule can be a sub-collection or linked logic
+}
+
+export type BookingStatus = 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+
+export interface LabBooking {
+    id: string;
+    researcherName: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    experimentType: string;
+    labName: string; // Default 'PG Lab'
+    status: BookingStatus; // Added Status
+    createdAt: number;
+}
+
+export interface LabClass {
+    id: string;
+    labId: string;
+    courseName: string;
+    instructor: string;
+    day: string; // e.g. "Sunday"
+    startTime: string;
+    endTime: string;
+}
+
+// --- Greenhouse Management ---
+export type PlotStatus = 'FREE' | 'OCCUPIED';
+
+export interface GreenhousePlot {
+    id: string; // "1", "2", etc.
+    number: number;
+    status: PlotStatus;
+    researcher?: string;
+    plantType?: string;
+    startDate?: string;
+    notes?: string; // Worker instructions
+}
+
+export interface GreenhouseHistoryItem {
+    id: string;
+    plotNumber: number;
+    researcher: string;
+    plantType: string;
+    startDate: string;
+    endDate: string;
+    notes?: string;
+}
+
+// --- Department Events ---
+export type DeptEventType = 'WORKSHOP' | 'SEMINAR' | 'TRIP' | 'CONFERENCE' | 'COURSE';
+export type EventStatus = 'UPCOMING' | 'COMPLETED' | 'CANCELLED';
+
+export interface DeptEvent {
+    id: string;
+    title: string;
+    type: DeptEventType;
+    date: string;
+    location: string;
+    description: string;
+    regLink?: string; // Registration link (Google Form)
+    status: EventStatus; // Added status
+    createdAt: number;
 }
 
 export interface DashboardStats {

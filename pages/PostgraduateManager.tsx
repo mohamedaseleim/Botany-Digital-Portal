@@ -16,7 +16,8 @@ import {
   UploadCloud,
   X,
   Link as LinkIcon,
-  Search
+  Search,
+  BookOpen
 } from 'lucide-react';
 import { PostgraduateStudent, ArchiveDocument, DocType, PGOtherDoc } from '../types';
 import { getPGStudents, updatePGStudent, getDocuments } from '../services/dbService';
@@ -248,10 +249,10 @@ export const PostgraduateManager: React.FC = () => {
         </div>
       </div>
 
-      {/* Students List */}
+      {/* Students List (Detailed) */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
-            <h3 className="font-bold text-gray-700">سجل الطلاب والمتابعة</h3>
+            <h3 className="font-bold text-gray-700">المتابعة التفصيلية (إدارة الملفات والتقارير)</h3>
         </div>
         
         <div className="divide-y">
@@ -422,6 +423,66 @@ export const PostgraduateManager: React.FC = () => {
                     )}
                 </div>
             ))}
+        </div>
+      </div>
+
+      {/* Researchers & Thesis Registry (General Table) */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-8">
+        <div className="p-6 border-b border-gray-100 flex items-center gap-2">
+            <BookOpen className="w-5 h-5 text-gray-600" />
+            <h3 className="font-bold text-gray-800 text-lg">سجل الباحثين والرسائل العلمية</h3>
+        </div>
+        <div className="overflow-x-auto">
+            <table className="w-full text-sm text-right">
+                <thead className="bg-gray-50 text-gray-600 font-medium">
+                    <tr>
+                        <th className="p-4">اسم الباحث</th>
+                        <th className="p-4">الدرجة</th>
+                        <th className="p-4">موضوع البحث</th>
+                        <th className="p-4">هيئة الإشراف</th>
+                        <th className="p-4">تاريخ التسجيل</th>
+                        <th className="p-4">الحالة</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y">
+                    {students.map(student => (
+                        <tr key={student.id} className="hover:bg-gray-50 transition-colors">
+                            <td className="p-4 font-bold text-gray-800">{student.name}</td>
+                            <td className="p-4">
+                                <span className={`px-2 py-1 rounded text-xs font-bold ${
+                                    student.degree === 'PhD' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                                }`}>
+                                    {student.degree === 'PhD' ? 'دكتوراه' : 'ماجستير'}
+                                </span>
+                            </td>
+                            <td className="p-4 text-gray-600 max-w-xs truncate" title={student.researchTopic}>
+                                {student.researchTopic}
+                            </td>
+                            <td className="p-4 text-gray-600">
+                                {student.supervisor}
+                                {student.coSupervisors && <span className="text-xs text-gray-400 block">+ {student.coSupervisors}</span>}
+                            </td>
+                            <td className="p-4 font-mono text-gray-500">
+                                {student.dates.registration || '-'}
+                            </td>
+                            <td className="p-4">
+                                <span className="px-2 py-1 rounded-full text-xs border bg-gray-50 border-gray-200 text-gray-600">
+                                    {student.status === 'Researching' && 'مرحلة البحث'}
+                                    {student.status === 'Writing' && 'مرحلة الكتابة'}
+                                    {student.status === 'Defense' && 'جاهز للمناقشة'}
+                                    {student.status === 'Granted' && 'تم المنح'}
+                                    {student.status === 'Recording' && 'إجراءات التسجيل'}
+                                </span>
+                            </td>
+                        </tr>
+                    ))}
+                    {students.length === 0 && (
+                        <tr>
+                            <td colSpan={6} className="p-8 text-center text-gray-400">لا يوجد باحثين مسجلين حالياً</td>
+                        </tr>
+                    )}
+                </tbody>
+            </table>
         </div>
       </div>
 

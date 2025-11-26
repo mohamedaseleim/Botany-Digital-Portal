@@ -16,7 +16,12 @@ import {
   Briefcase,
   UserCircle,
   UserCog,
-  FileClock
+  FileClock,
+  Microscope,
+  FlaskConical,
+  Sprout,
+  Megaphone,
+  Activity
 } from 'lucide-react';
 import { User, UserRole } from '../types';
 
@@ -65,10 +70,34 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       roles: [UserRole.ADMIN, UserRole.STAFF] 
     },
     { 
+      path: '/events', 
+      label: 'أنشطة وفعاليات القسم', 
+      icon: Megaphone, 
+      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.STUDENT_PG, UserRole.STUDENT_UG, UserRole.ALUMNI] 
+    },
+    { 
         path: '/pg-manager', 
         label: 'مدير الدراسات العليا', 
         icon: FileClock, 
         roles: [UserRole.ADMIN, UserRole.STAFF] 
+    },
+    { 
+      path: '/inventory', 
+      label: 'سجل العهدة', // Renamed
+      icon: Microscope, 
+      roles: [UserRole.ADMIN, UserRole.STAFF] 
+    },
+    { 
+      path: '/labs', 
+      label: 'إدارة المعامل', // New
+      icon: FlaskConical, 
+      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.STUDENT_PG] 
+    },
+    { 
+      path: '/greenhouse', 
+      label: 'إدارة صوبة القسم', // New Greenhouse
+      icon: Sprout, 
+      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.STUDENT_PG] 
     },
     { 
       path: '/staff', 
@@ -92,6 +121,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       path: '/users', 
       label: 'إدارة المستخدمين', 
       icon: UserCog, 
+      roles: [UserRole.ADMIN] 
+    },
+    { 
+      path: '/activity-log', 
+      label: 'سجل النشاطات', 
+      icon: Activity, 
       roles: [UserRole.ADMIN] 
     },
     { 
