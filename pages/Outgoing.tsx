@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, UploadCloud, Save, Loader2, FileText, Download } from 'lucide-react';
-import { ArchiveDocument, DocType, User, UserRole } from '../types';
+import { Plus, UploadCloud, Save, Loader2, FileText } from 'lucide-react';
+import { ArchiveDocument, DocType, User } from '../types';
 import { addDocument, generateSerial, getDocuments, uploadFileToDrive } from '../services/dbService';
 
 interface OutgoingProps {
@@ -55,7 +55,13 @@ export const Outgoing: React.FC<OutgoingProps> = ({ user }) => {
     try {
       let fileUrl = '';
       if (file) {
-        fileUrl = await uploadFileToDrive(file);
+        try {
+            // محاولة رفع الملف
+            fileUrl = await uploadFileToDrive(file);
+        } catch (uploadError) {
+            console.error("Upload failed:", uploadError);
+            throw new Error("فشل رفع الملف. تأكد من إعدادات Google Drive Script.");
+        }
       }
 
       await addDocument({
@@ -65,14 +71,15 @@ export const Outgoing: React.FC<OutgoingProps> = ({ user }) => {
         recipient: formData.recipient,
         subject: formData.subject,
         notes: formData.notes,
-        fileUrl: fileUrl || undefined,
+        fileUrl: fileUrl || "", 
       });
 
       setFormVisible(false);
       fetchDocs();
+      alert("تم الحفظ بنجاح ✅");
     } catch (error) {
       console.error(error);
-      alert('حدث خطأ أثناء الحفظ');
+      alert('حدث خطأ: ' + (error as any).message);
     } finally {
       setSubmitting(false);
     }
@@ -109,7 +116,7 @@ export const Outgoing: React.FC<OutgoingProps> = ({ user }) => {
                   value={formData.serialNumber}
                   onChange={(e) => setFormData({...formData, serialNumber: e.target.value})}
                   className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-green-500 outline-none bg-gray-50"
-                  readOnly // Mostly auto-generated but can be editable if needed
+                  readOnly 
                 />
               </div>
               <div>
@@ -155,19 +162,27 @@ export const Outgoing: React.FC<OutgoingProps> = ({ user }) => {
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">صورة الخطاب (PDF/Image)</label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-colors">
+                <div className={`border-2 border-dashed border-gray-300 rounded-lg p-6 text-center transition-colors ${submitting ? 'bg-gray-50 opacity-75' : 'hover:bg-gray-50'}`}>
                   <input 
                     type="file" 
                     id="fileUpload"
                     className="hidden" 
+                    disabled={submitting}
                     onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)}
                   />
-                  <label htmlFor="fileUpload" className="cursor-pointer flex flex-col items-center gap-2">
-                    <UploadCloud className="w-8 h-8 text-gray-400" />
+                  <label htmlFor="fileUpload" className={`cursor-pointer flex flex-col items-center gap-2 ${submitting ? 'cursor-wait' : ''}`}>
+                    {submitting ? (
+                        <Loader2 className="w-8 h-8 text-green-600 animate-spin" />
+                    ) : (
+                        <UploadCloud className="w-8 h-8 text-gray-400" />
+                    )}
                     <span className="text-gray-600 text-sm">
                       {file ? file.name : 'اضغط لاختيار ملف أو اسحبه هنا'}
                     </span>
-                    <span className="text-xs text-gray-400">يتم الرفع إلى Google Drive</span>
+                    {/* تم تحديث النص هنا */}
+                    <span className={`text-xs ${submitting ? 'text-green-600 font-bold animate-pulse' : 'text-gray-400'}`}>
+                        {submitting ? 'جاري الرفع إلى Google Drive...' : 'يتم التخزين في Google Drive'}
+                    </span>
                   </label>
                 </div>
               </div>
@@ -177,17 +192,18 @@ export const Outgoing: React.FC<OutgoingProps> = ({ user }) => {
               <button 
                 type="button" 
                 onClick={() => setFormVisible(false)}
-                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                disabled={submitting}
+                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-50"
               >
                 إلغاء
               </button>
               <button 
                 type="submit" 
                 disabled={submitting}
-                className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg flex items-center gap-2 disabled:opacity-50"
+                className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                <span>حفظ وأرشفة</span>
+                <span>{submitting ? 'جاري الحفظ...' : 'حفظ وأرشفة'}</span>
               </button>
             </div>
           </form>
