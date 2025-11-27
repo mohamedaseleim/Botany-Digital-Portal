@@ -31,7 +31,6 @@ interface LayoutProps {
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
-  console.log("Current User Role:", user.role);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
 
