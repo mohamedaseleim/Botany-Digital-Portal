@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
-import { Activity, Trash2, RefreshCcw, ShieldAlert, Search, AlertTriangle, Loader2 } from 'lucide-react';
-import { ActivityLogItem } from '../types';
-import { getActivityLogs, deleteActivityLog } from '../services/dbService';
+import { Activity, Trash2, RefreshCcw, ShieldAlert, Search, AlertTriangle, Loader2, PlusCircle } from 'lucide-react';
+import { ActivityLogItem } from '@/types';
+import { getActivityLogs, deleteActivityLog, logActivity } from '@/services/dbService';
 
 export const ActivityLogs: React.FC = () => {
     const [logs, setLogs] = useState<ActivityLogItem[]>([]);
@@ -61,6 +60,14 @@ export const ActivityLogs: React.FC = () => {
         }
     };
 
+    // زر الاختبار
+    const handleTestLog = async () => {
+        setLoading(true);
+        await logActivity("اختبار يدوي", "Admin", "تجربة إضافة سجل للتأكد من الاتصال");
+        await fetchLogs();
+        setLoading(false);
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -71,12 +78,20 @@ export const ActivityLogs: React.FC = () => {
                     </h1>
                     <p className="text-gray-500 text-sm">متابعة الإجراءات التي تمت على النظام (خاص بالمدير فقط)</p>
                 </div>
-                <button 
-                    onClick={fetchLogs} 
-                    className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg flex items-center gap-1"
-                >
-                    <RefreshCcw className="w-4 h-4" /> تحديث
-                </button>
+                <div className="flex gap-2">
+                    <button 
+                        onClick={handleTestLog} 
+                        className="text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-2 rounded-lg flex items-center gap-1"
+                    >
+                        <PlusCircle className="w-4 h-4" /> سجل تجريبي
+                    </button>
+                    <button 
+                        onClick={fetchLogs} 
+                        className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg flex items-center gap-1"
+                    >
+                        <RefreshCcw className="w-4 h-4" /> تحديث
+                    </button>
+                </div>
             </div>
 
             {/* Search Bar */}
@@ -135,7 +150,8 @@ export const ActivityLogs: React.FC = () => {
                                 <tr>
                                     <td colSpan={5} className="p-12 text-center text-gray-400 flex flex-col items-center justify-center">
                                         <ShieldAlert className="w-10 h-10 mb-2 opacity-20" />
-                                        لا توجد نشاطات مسجلة
+                                        <p>لا توجد نشاطات مسجلة حتى الآن</p>
+                                        <p className="text-xs mt-2 text-blue-500 cursor-pointer" onClick={handleTestLog}>اضغط هنا لإضافة سجل تجريبي</p>
                                     </td>
                                 </tr>
                             )}
