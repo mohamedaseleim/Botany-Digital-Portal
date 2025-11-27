@@ -1,6 +1,5 @@
 import { 
-  db, 
-  storage 
+  db 
 } from '../firebaseConfig';
 import { 
   collection, 
@@ -13,14 +12,8 @@ import {
   where, 
   orderBy, 
   limit,
-  writeBatch,
-  Timestamp
+  writeBatch
 } from 'firebase/firestore';
-import { 
-  ref, 
-  uploadBytes, 
-  getDownloadURL 
-} from 'firebase/storage';
 
 import { 
   ArchiveDocument, DocType, DashboardStats, StaffMember, PostgraduateStudent, 
@@ -29,23 +22,68 @@ import {
   GreenhousePlot, GreenhouseHistoryItem, DeptEvent, ActivityLogItem 
 } from '../types';
 
-// --- FILE UPLOAD SERVICE (Firebase Storage) ---
+// --- GOOGLE DRIVE UPLOAD SERVICE (Via Apps Script) ---
+
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwuWlnf0aFiBQKNWOsBuNEx_voz3XB3kwAzxL13ZhL6bfsotewcxKKMmkD58e5hDVZ1zA/exec";
 
 export const uploadFileToDrive = async (file: File): Promise<string> => {
-  try {
-    // إنشاء مسار فريد للملف: uploads/timestamp_filename
-    const storageRef = ref(storage, `uploads/${Date.now()}_${file.name}`);
-    
-    // رفع الملف
-    const snapshot = await uploadBytes(storageRef, file);
-    
-    // الحصول على الرابط
-    const downloadURL = await getDownloadURL(snapshot.ref);
-    return downloadURL;
-  } catch (error) {
-    console.error("Error uploading file:", error);
-    throw new Error("فشل رفع الملف");
+  // التحقق من حجم الملف (Google Apps Script له حدود، مثلاً 50MB)
+  if (file.size > 50 * 1024 * 1024) {
+      throw new Error("حجم الملف كبير جداً. الحد الأقصى هو 50 ميجابايت.");
   }
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    
+    reader.onload = async () => {
+      try {
+        // 1. تحويل الملف إلى Base64 (مع إزالة الترويسة data:image/png;base64,)
+        const resultStr = reader.result as string;
+        const base64Data = resultStr.split(',')[1];
+        
+        if (!base64Data) {
+            reject(new Error("فشل قراءة بيانات الملف."));
+            return;
+        }
+
+        // 2. تجهيز البيانات للإرسال
+        const payload = {
+          base64: base64Data,
+          type: file.type,
+          name: file.name
+        };
+
+        // 3. الإرسال إلى Google Apps Script
+        // استخدام 'no-cors' قد يمنع قراءة الرد في بعض الحالات، لكن Apps Script 
+        // معد ليرد بـ JSONP أو CORS headers صحيحة.
+        // سنحاول أولاً بوضع standard mode
+        const response = await fetch(GOOGLE_SCRIPT_URL, {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (result.status === 'success' && result.url) {
+          resolve(result.url); // رابط الملف المباشر
+        } else {
+          reject(new Error(result.message || "فشل الرفع: لم يتم استلام رابط صحيح."));
+        }
+
+      } catch (error) {
+        console.error("Google Drive Upload Error:", error);
+        // رسالة خطأ واضحة للمستخدم
+        reject(new Error("فشل الاتصال بخدمة Google Drive. تأكد من أنك متصل بالإنترنت وأن خدمة الرفع متاحة."));
+      }
+    };
+
+    reader.onerror = () => reject(new Error("حدث خطأ أثناء قراءة الملف محلياً."));
+    reader.readAsDataURL(file);
+  });
 };
 
 // --- LOGGING SYSTEM ---
@@ -57,7 +95,7 @@ export const logActivity = async (action: string, performedBy: string, details: 
       performedBy,
       details,
       timestamp: new Date().toISOString(),
-      createdAt: Date.now() // للترتيب
+      createdAt: Date.now()
     });
   } catch (error) {
     console.error("Error logging activity:", error);
@@ -66,9 +104,14 @@ export const logActivity = async (action: string, performedBy: string, details: 
 
 export const getActivityLogs = async (): Promise<ActivityLogItem[]> => {
   try {
-    const q = query(collection(db, 'activity_logs'), orderBy('createdAt', 'desc'), limit(100));
+    const q = query(collection(db, 'activity_logs'), limit(100));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ActivityLogItem));
+    
+    let logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ActivityLogItem));
+    // ترتيب محلي
+    logs.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    
+    return logs;
   } catch (error) {
     console.error("Error fetching logs:", error);
     return [];
@@ -83,16 +126,16 @@ export const deleteActivityLog = async (id: string): Promise<void> => {
 
 export const loginUser = async (username: string, password: string): Promise<User | null> => {
   try {
-    // 1. Search in Staff Collection
+    // 1. Staff
     const staffQ = query(collection(db, 'staff'), where('username', '==', username), where('password', '==', password));
     const staffSnap = await getDocs(staffQ);
     
     if (!staffSnap.empty) {
       const userDoc = staffSnap.docs[0].data() as StaffMember;
       let role = UserRole.STAFF;
-      if (username === 'admin') role = UserRole.ADMIN; // Override for admin user
+      if (username.toLowerCase() === 'admin') role = UserRole.ADMIN;
       
-      logActivity('تسجيل دخول', userDoc.name, `دخل بصلاحية ${role}`);
+      await logActivity('تسجيل دخول', userDoc.name, `دخل بصلاحية ${role}`);
       return {
         id: staffSnap.docs[0].id,
         name: userDoc.name,
@@ -101,30 +144,30 @@ export const loginUser = async (username: string, password: string): Promise<Use
       };
     }
 
-    // 2. Search in PG Students
+    // 2. PG Students
     const pgQ = query(collection(db, 'pg_students'), where('username', '==', username), where('password', '==', password));
     const pgSnap = await getDocs(pgQ);
     if (!pgSnap.empty) {
       const userDoc = pgSnap.docs[0].data() as PostgraduateStudent;
-      logActivity('تسجيل دخول', userDoc.name, 'طالب دراسات عليا');
+      await logActivity('تسجيل دخول', userDoc.name, 'طالب دراسات عليا');
       return { id: pgSnap.docs[0].id, name: userDoc.name, role: UserRole.STUDENT_PG, details: 'دراسات عليا' };
     }
 
-    // 3. Search in UG Students
+    // 3. UG Students
     const ugQ = query(collection(db, 'ug_students'), where('username', '==', username), where('password', '==', password));
     const ugSnap = await getDocs(ugQ);
     if (!ugSnap.empty) {
       const userDoc = ugSnap.docs[0].data() as UndergraduateStudent;
-      logActivity('تسجيل دخول', userDoc.name, 'طالب جامعي');
+      await logActivity('تسجيل دخول', userDoc.name, 'طالب جامعي');
       return { id: ugSnap.docs[0].id, name: userDoc.name, role: UserRole.STUDENT_UG, details: 'طالب جامعي' };
     }
 
-    // 4. Search in Alumni
+    // 4. Alumni
     const alumniQ = query(collection(db, 'alumni'), where('username', '==', username), where('password', '==', password));
     const alumniSnap = await getDocs(alumniQ);
     if (!alumniSnap.empty) {
       const userDoc = alumniSnap.docs[0].data() as AlumniMember;
-      logActivity('تسجيل دخول', userDoc.name, 'خريج');
+      await logActivity('تسجيل دخول', userDoc.name, 'خريج');
       return { id: alumniSnap.docs[0].id, name: userDoc.name, role: UserRole.ALUMNI, details: 'خريج' };
     }
 
@@ -140,23 +183,18 @@ export const loginUser = async (username: string, password: string): Promise<Use
 export const getDocuments = async (type?: DocType): Promise<ArchiveDocument[]> => {
   try {
     const archiveRef = collection(db, 'archive');
-    let q = query(archiveRef, orderBy('createdAt', 'desc'));
-    
+    let q;
     if (type) {
       q = query(archiveRef, where('type', '==', type)); 
-      // Note: Compound queries (where + orderBy) might require an index in Firebase Console.
-      // If it fails, check the console link provided in the error.
+    } else {
+      q = query(archiveRef);
     }
-
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ArchiveDocument));
-  } catch (error) {
-    // Fallback for index errors: fetch all then sort/filter in memory if needed (temporary)
-    console.warn("Index might be missing, falling back to client-side filtering", error);
-    const snapshot = await getDocs(collection(db, 'archive'));
     let docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ArchiveDocument));
-    if (type) docs = docs.filter(d => d.type === type);
     return docs.sort((a, b) => b.createdAt - a.createdAt);
+  } catch (error) {
+    console.warn("Error fetching docs:", error);
+    return [];
   }
 };
 
@@ -179,7 +217,6 @@ export const deleteDocument = async (id: string): Promise<void> => {
 };
 
 export const generateSerial = async (type: DocType): Promise<string> => {
-  // This is a simple client-side count. For high volume, use a distributed counter or transaction.
   const docs = await getDocuments(type);
   const currentYear = new Date().getFullYear();
   const count = docs.length + 1;
@@ -187,8 +224,6 @@ export const generateSerial = async (type: DocType): Promise<string> => {
 };
 
 export const getStats = async (): Promise<DashboardStats> => {
-  // Note: In production, use 'count()' aggregation queries for efficiency.
-  // For now, we'll fetch collections.
   const archiveSnap = await getDocs(collection(db, 'archive'));
   const staffSnap = await getDocs(collection(db, 'staff'));
   const pgSnap = await getDocs(collection(db, 'pg_students'));
@@ -412,7 +447,6 @@ export const getGreenhousePlots = async (): Promise<GreenhousePlot[]> => {
   const plots = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as GreenhousePlot));
   
   if (plots.length === 0) {
-    // Initial Seed for Plots (first time only)
     const batch = writeBatch(db);
     const newPlots: GreenhousePlot[] = [];
     for (let i = 1; i <= 12; i++) {
@@ -504,54 +538,25 @@ export const deleteEvent = async (id: string): Promise<void> => {
 };
 
 // --- HELPER: SEED INITIAL DATA (Run Once) ---
-// Call this function temporarily from a component to populate the DB if empty
 export const seedInitialData = async () => {
   const staffCheck = await getDocs(collection(db, 'staff'));
-  if (!staffCheck.empty) return; // Already seeded
+  if (!staffCheck.empty) return;
 
-  console.log("Seeding initial data to Firestore...");
-  
+  console.log("Seeding initial data...");
   const batch = writeBatch(db);
 
-  // 1. Admin User
+  // Admin User
   const adminRef = doc(collection(db, 'staff'));
   batch.set(adminRef, {
-    name: 'أ.د/ محمد الصادق', 
-    rank: 'رئيس القسم', 
-    specialization: 'أمراض بكتيرية', 
-    email: 'mohamedseleim@azhar.edu.eg', 
+    name: 'Admin User', 
+    rank: 'رئيس النظام', 
+    specialization: 'IT', 
+    email: 'admin@botany.com', 
     username: 'admin', 
-    password: 'admin', // Change this after first login!
+    password: 'admin', 
     subRole: 'FACULTY'
-  });
-
-  // 2. Sample Staff
-  const staffRef = doc(collection(db, 'staff'));
-  batch.set(staffRef, {
-    name: 'أ.د/ محمد علي', 
-    rank: 'أستاذ متفرغ', 
-    specialization: 'فطريات', 
-    email: 'mohamed@azhar.edu.eg', 
-    username: 'mohamed.ali', 
-    password: '123',
-    subRole: 'FACULTY'
-  });
-
-  // 3. Sample PG Student
-  const pgRef = doc(collection(db, 'pg_students'));
-  batch.set(pgRef, {
-    name: 'علي محمود', 
-    degree: 'MSc', 
-    researchTopic: 'المكافحة الحيوية', 
-    supervisor: 'أ.د/ محمد علي', 
-    status: 'Researching', 
-    username: 'ali.m', 
-    password: '123',
-    dates: { enrollment: '2023-01-01' },
-    documents: { publishedPapers: [] },
-    alerts: { reportOverdue: false, extensionNeeded: false }
   });
 
   await batch.commit();
-  console.log("Seeding complete. You can now login as 'admin' / 'admin'.");
+  console.log("Seeded admin user: admin/admin");
 };
