@@ -8,18 +8,18 @@ import {
   Menu, 
   LogOut, 
   Leaf,
-  Users,
-  ClipboardList,
-  GraduationCap,
-  BookOpen,
-  Briefcase,
-  UserCircle,
-  UserCog,
-  FileClock,
-  Microscope,
-  FlaskConical,
-  Sprout,
-  Megaphone,
+  Users, 
+  ClipboardList, 
+  GraduationCap, 
+  BookOpen, 
+  Briefcase, 
+  UserCircle, 
+  UserCog, 
+  FileClock, 
+  Microscope, 
+  FlaskConical, 
+  Sprout, 
+  Megaphone, 
   Activity
 } from 'lucide-react';
 import { User, UserRole } from '../types';
@@ -36,7 +36,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
 
   const isActive = (path: string) => location.pathname === path;
 
-  // Define all possible navigation items
+  // قائمة الروابط الكاملة
   const allNavItems = [
     { 
       path: '/', 
@@ -82,19 +82,19 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
     },
     { 
       path: '/inventory', 
-      label: 'سجل العهدة', // Renamed
+      label: 'سجل العهدة', 
       icon: Microscope, 
       roles: [UserRole.ADMIN, UserRole.STAFF] 
     },
     { 
       path: '/labs', 
-      label: 'إدارة المعامل', // New
+      label: 'إدارة المعامل', 
       icon: FlaskConical, 
       roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.STUDENT_PG] 
     },
     { 
       path: '/greenhouse', 
-      label: 'إدارة صوبة القسم', // New Greenhouse
+      label: 'إدارة صوبة القسم', 
       icon: Sprout, 
       roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.STUDENT_PG] 
     },
@@ -122,12 +122,14 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       icon: UserCog, 
       roles: [UserRole.ADMIN] 
     },
+    // --- رابط سجل النشاطات ---
     { 
       path: '/activity-log', 
       label: 'سجل النشاطات', 
       icon: Activity, 
       roles: [UserRole.ADMIN] 
     },
+    // -----------------------
     { 
       path: '/search', 
       label: 'البحث والاستعلام', 
@@ -136,7 +138,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
     },
   ];
 
-  // Filter items based on user role
+  // تصفية العناصر بناءً على صلاحية المستخدم
   const navItems = allNavItems.filter(item => item.roles.includes(user.role));
 
   return (
