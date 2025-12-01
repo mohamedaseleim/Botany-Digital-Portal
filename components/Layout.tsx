@@ -36,7 +36,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
 
   const isActive = (path: string) => location.pathname === path;
 
-  // قائمة الروابط الكاملة (الترتيب النهائي)
+  // قائمة الروابط الكاملة
   const allNavItems = [
     { 
       path: '/', 
@@ -122,7 +122,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       icon: UserCog, 
       roles: [UserRole.ADMIN] 
     },
-    // تم وضع الرابط هنا في مكانه الصحيح
     { 
       path: '/activity-log', 
       label: 'سجل النشاطات', 
@@ -153,12 +152,13 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       {/* Sidebar */}
       <aside 
         className={`
-          fixed top-0 right-0 h-full w-64 bg-green-900 text-white z-30 transform transition-transform duration-300 ease-in-out shadow-xl
+          fixed top-0 right-0 h-full w-64 bg-green-900 text-white z-30 transform transition-transform duration-300 ease-in-out shadow-xl flex flex-col
           ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'} 
           lg:relative lg:translate-x-0
         `}
       >
-        <div className="p-6 border-b border-green-800 flex items-center gap-3">
+        {/* Header - Fixed Height */}
+        <div className="p-6 border-b border-green-800 flex items-center gap-3 shrink-0">
           <div className="bg-white p-2 rounded-full">
             <Leaf className="w-6 h-6 text-green-700" />
           </div>
@@ -168,7 +168,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
           </div>
         </div>
 
-        <nav className="mt-6 px-4 space-y-2 overflow-y-auto max-h-[calc(100vh-180px)] custom-scrollbar pb-20">
+        {/* Nav Items - Flex Grow & Scrollable */}
+        <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto custom-scrollbar">
           {navItems.map((item) => (
             <Link
               key={item.path}
@@ -187,7 +188,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
           ))}
         </nav>
 
-        <div className="absolute bottom-0 w-full p-4 border-t border-green-800 bg-green-900 z-10">
+        {/* User Footer - Fixed at Bottom (No overlap) */}
+        <div className="p-4 border-t border-green-800 bg-green-900 shrink-0">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-full bg-green-700 flex items-center justify-center font-bold text-lg border-2 border-green-600">
               {user.name.charAt(0)}

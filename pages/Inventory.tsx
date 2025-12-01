@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
     Microscope, 
@@ -10,10 +9,11 @@ import {
     XCircle,
     Save,
     Loader2,
-    X
+    X,
+    Edit // استيراد أيقونة التعديل
 } from 'lucide-react';
 import { Asset, AssetStatus, User } from '../types';
-import { getAssets, addAsset, deleteAsset, logActivity } from '../services/dbService';
+import { getAssets, addAsset, deleteAsset, updateAsset, logActivity } from '../services/dbService'; // إضافة updateAsset
 
 interface InventoryProps {
     user?: User;
@@ -25,7 +25,8 @@ export const Inventory: React.FC<InventoryProps> = ({ user }) => {
     const [submitting, setSubmitting] = useState(false);
     
     // Modal States
-    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false); // تم توحيد اسم المودال للإضافة والتعديل
+    const [editingId, setEditingId] = useState<string | null>(null); // لتخزين معرف العنصر المراد تعديله
     const [qrModalAsset, setQrModalAsset] = useState<Asset | null>(null);
 
     // Delete Modal State
@@ -54,23 +55,57 @@ export const Inventory: React.FC<InventoryProps> = ({ user }) => {
         setLoading(false);
     };
 
-    const handleAddAsset = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setSubmitting(true);
-        try {
-            await addAsset(formData);
-            logActivity('إضافة عهدة', user?.name || 'Unknown', `جهاز: ${formData.name} - ${formData.serialNumber}`);
-            await fetchData();
-            setIsAddModalOpen(false);
+    // فتح المودال (للإضافة أو التعديل)
+    const handleOpenModal = (asset?: Asset) => {
+        if (asset) {
+            setEditingId(asset.id);
             setFormData({
-                name: '', model: '', serialNumber: '', 
-                status: 'WORKING', location: '', assignedTo: '',
+                name: asset.name,
+                model: asset.model,
+                serialNumber: asset.serialNumber,
+                status: asset.status,
+                location: asset.location,
+                assignedTo: asset.assignedTo,
+                dateAcquired: asset.dateAcquired
+            });
+        } else {
+            setEditingId(null);
+            setFormData({
+                name: '',
+                model: '',
+                serialNumber: '',
+                status: 'WORKING',
+                location: '',
+                assignedTo: '',
                 dateAcquired: new Date().toISOString().split('T')[0]
             });
-            alert('تمت إضافة الجهاز بنجاح!');
+        }
+        setIsModalOpen(true);
+    };
+
+    const handleSaveAsset = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setSubmitting(true);
+        const userName = user?.name || 'Unknown';
+        
+        try {
+            if (editingId) {
+                // حالة التعديل
+                await updateAsset(editingId, formData);
+                logActivity('تعديل عهدة', userName, `تم تعديل الجهاز: ${formData.name}`);
+                alert('تم تعديل بيانات الجهاز بنجاح');
+            } else {
+                // حالة الإضافة
+                await addAsset(formData);
+                logActivity('إضافة عهدة', userName, `جهاز: ${formData.name} - ${formData.serialNumber}`);
+                alert('تمت إضافة الجهاز بنجاح');
+            }
+            
+            await fetchData();
+            setIsModalOpen(false);
         } catch (error) {
             console.error(error);
-            alert('حدث خطأ أثناء الإضافة');
+            alert('حدث خطأ أثناء الحفظ');
         } finally {
             setSubmitting(false);
         }
@@ -131,7 +166,7 @@ export const Inventory: React.FC<InventoryProps> = ({ user }) => {
                     <p className="text-gray-500 text-sm">إدارة الأجهزة المعملية ومتابعة حالتها</p>
                 </div>
                 <button 
-                    onClick={() => setIsAddModalOpen(true)}
+                    onClick={() => handleOpenModal()}
                     className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition-colors"
                 >
                     <Plus className="w-5 h-5" />
@@ -171,12 +206,13 @@ export const Inventory: React.FC<InventoryProps> = ({ user }) => {
                                 <th className="p-4">المكان</th>
                                 <th className="p-4">المسؤول</th>
                                 <th className="p-4">الحالة</th>
+                                <th className="p-4">الكود</th> {/* عمود الكود الجديد */}
                                 <th className="p-4">إجراءات</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y">
                             {loading ? (
-                                <tr><td colSpan={7} className="p-8 text-center text-gray-500">جاري التحميل...</td></tr>
+                                <tr><td colSpan={8} className="p-8 text-center text-gray-500">جاري التحميل...</td></tr>
                             ) : (
                                 assets.map(asset => (
                                     <tr key={asset.id} className="hover:bg-gray-50">
@@ -186,13 +222,27 @@ export const Inventory: React.FC<InventoryProps> = ({ user }) => {
                                         <td className="p-4">{asset.location}</td>
                                         <td className="p-4">{asset.assignedTo}</td>
                                         <td className="p-4">{getStatusBadge(asset.status)}</td>
-                                        <td className="p-4 flex gap-2">
+                                        
+                                        {/* عمود الكود (QR) */}
+                                        <td className="p-4">
                                             <button 
                                                 onClick={() => setQrModalAsset(asset)}
-                                                className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg"
+                                                className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg flex items-center gap-1 text-xs"
                                                 title="عرض QR Code"
                                             >
                                                 <QrCode className="w-4 h-4" />
+                                                QR
+                                            </button>
+                                        </td>
+
+                                        {/* عمود الإجراءات (تعديل + حذف) */}
+                                        <td className="p-4 flex gap-2">
+                                            <button 
+                                                onClick={() => handleOpenModal(asset)}
+                                                className="p-2 text-green-600 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+                                                title="تعديل"
+                                            >
+                                                <Edit className="w-4 h-4" />
                                             </button>
                                             <button 
                                                 type="button"
@@ -201,7 +251,7 @@ export const Inventory: React.FC<InventoryProps> = ({ user }) => {
                                                     e.stopPropagation();
                                                     initiateDelete(asset.id);
                                                 }}
-                                                className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg cursor-pointer"
+                                                className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg cursor-pointer transition-colors"
                                                 title="حذف"
                                             >
                                                 <Trash2 className="w-4 h-4" />
@@ -211,24 +261,26 @@ export const Inventory: React.FC<InventoryProps> = ({ user }) => {
                                 ))
                             )}
                             {!loading && assets.length === 0 && (
-                                <tr><td colSpan={7} className="p-8 text-center text-gray-400">لا توجد أجهزة مسجلة</td></tr>
+                                <tr><td colSpan={8} className="p-8 text-center text-gray-400">لا توجد أجهزة مسجلة</td></tr>
                             )}
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            {/* Add Asset Modal */}
-            {isAddModalOpen && (
+            {/* Add/Edit Asset Modal */}
+            {isModalOpen && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl animate-in fade-in zoom-in-95">
                         <div className="p-6 border-b flex justify-between items-center">
-                            <h3 className="text-xl font-bold text-gray-800">إضافة جهاز جديد</h3>
-                            <button onClick={() => setIsAddModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                            <h3 className="text-xl font-bold text-gray-800">
+                                {editingId ? 'تعديل بيانات الجهاز' : 'إضافة جهاز جديد'}
+                            </h3>
+                            <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600">
                                 <X className="w-6 h-6" />
                             </button>
                         </div>
-                        <form onSubmit={handleAddAsset} className="p-6 space-y-4">
+                        <form onSubmit={handleSaveAsset} className="p-6 space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">اسم الجهاز</label>
                                 <input 
@@ -296,7 +348,7 @@ export const Inventory: React.FC<InventoryProps> = ({ user }) => {
                             </div>
 
                             <div className="flex justify-end gap-2 pt-4 border-t mt-4">
-                                <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">إلغاء</button>
+                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">إلغاء</button>
                                 <button 
                                     type="submit" disabled={submitting}
                                     className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
