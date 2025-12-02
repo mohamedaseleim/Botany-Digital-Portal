@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { FileInput, FileOutput, Calendar, AlertTriangle, RefreshCcw, CheckCircle2, Clock, Users, ClipboardList, GraduationCap, Briefcase } from 'lucide-react';
+import { FileInput, FileOutput, Calendar, AlertTriangle, RefreshCcw, CheckCircle2, Clock, Users, ClipboardList, GraduationCap, Briefcase, BadgeCheck } from 'lucide-react';
 import { StatCard } from '../components/StatCard';
 import { getStats, getDocuments } from '../services/dbService';
 import { DashboardStats, ArchiveDocument, DocType } from '../types';
@@ -47,6 +47,7 @@ export const Dashboard: React.FC = () => {
         </button>
       </div>
 
+      {/* الإحصائيات الإدارية */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="إجمالي الوارد" value={stats.totalIncoming} icon={FileInput} color="blue" />
         <StatCard title="إجمالي الصادر" value={stats.totalOutgoing} icon={FileOutput} color="green" />
@@ -54,10 +55,11 @@ export const Dashboard: React.FC = () => {
         <StatCard title="اجتماعات اللجان" value={stats.totalCommittees} icon={ClipboardList} color="amber" />
       </div>
       
-      {/* Portal Stats Row */}
+      {/* إحصائيات مجتمع القسم (تم تحديثها لتشمل الموظفين) */}
       <h3 className="font-bold text-gray-700 mt-4">إحصائيات مجتمع القسم</h3>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
          <StatCard title="أعضاء هيئة التدريس" value={stats.totalStaff} icon={Users} color="green" />
+         <StatCard title="الموظفين والإداريين" value={stats.totalEmployees} icon={BadgeCheck} color="amber" />
          <StatCard title="طلاب الدراسات العليا" value={stats.totalStudentsPG} icon={GraduationCap} color="blue" />
          <StatCard title="شبكة الخريجين" value={stats.totalAlumni} icon={Briefcase} color="purple" />
       </div>

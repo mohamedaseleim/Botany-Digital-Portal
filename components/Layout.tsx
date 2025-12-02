@@ -20,7 +20,8 @@ import {
   FlaskConical, 
   Sprout, 
   Megaphone, 
-  Activity
+  Activity,
+  Network // أيقونة الهيكل الإداري
 } from 'lucide-react';
 import { User, UserRole } from '../types';
 
@@ -42,7 +43,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       path: '/', 
       label: 'لوحة القيادة', 
       icon: LayoutDashboard, 
-      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.DATA_ENTRY] 
+      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.DATA_ENTRY, UserRole.EMPLOYEE] 
     },
     { 
       path: '/outgoing', 
@@ -68,11 +69,19 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       icon: ClipboardList, 
       roles: [UserRole.ADMIN, UserRole.STAFF] 
     },
+    // --- رابط الهيكل الإداري ---
+    { 
+      path: '/formation', 
+      label: 'الهيكل الإداري واللجان', 
+      icon: Network, 
+      roles: [UserRole.ADMIN, UserRole.STAFF] 
+    },
+    // -------------------------
     { 
       path: '/events', 
       label: 'أنشطة وفعاليات القسم', 
       icon: Megaphone, 
-      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.STUDENT_PG, UserRole.STUDENT_UG, UserRole.ALUMNI] 
+      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.STUDENT_PG, UserRole.STUDENT_UG, UserRole.ALUMNI, UserRole.EMPLOYEE] 
     },
     { 
         path: '/pg-manager', 
@@ -200,7 +209,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
                 {user.role === UserRole.ADMIN ? 'مدير النظام' : 
                  user.role === UserRole.STAFF ? 'عضو هيئة تدريس' :
                  user.role === UserRole.STUDENT_PG ? 'دراسات عليا' :
-                 user.role === UserRole.STUDENT_UG ? 'طالب' : 'خريج'}
+                 user.role === UserRole.STUDENT_UG ? 'طالب' : 
+                 user.role === UserRole.EMPLOYEE ? 'موظف / إداري' : 'خريج'}
               </p>
             </div>
           </div>

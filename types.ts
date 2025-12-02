@@ -1,11 +1,11 @@
-
 export enum UserRole {
   ADMIN = 'ADMIN', // رئيس القسم - صلاحية كاملة
   DATA_ENTRY = 'DATA_ENTRY', // سكرتارية - أرشيف فقط
   STAFF = 'STAFF', // عضو هيئة تدريس
   STUDENT_PG = 'STUDENT_PG', // دراسات عليا
   STUDENT_UG = 'STUDENT_UG', // طالب جامعي
-  ALUMNI = 'ALUMNI' // خريج
+  ALUMNI = 'ALUMNI', // خريج
+  EMPLOYEE = 'EMPLOYEE' // موظف/إداري (جديد)
 }
 
 export enum DocType {
@@ -123,13 +123,19 @@ export interface StaffDocuments {
     coursePortfolios?: CoursePortfolio[];
 }
 
-export interface StaffMember {
+// --- بيانات الاتصال المشتركة ---
+export interface ContactInfo {
+    email?: string;
+    phone?: string;
+    whatsapp?: string;
+    address?: string;
+}
+
+export interface StaffMember extends ContactInfo {
   id: string;
   name: string;
   rank: string; // أستاذ، أستاذ مساعد...
   specialization: string; // التخصص الدقيق
-  email: string;
-  phone?: string;
   imageUrl?: string;
   username?: string; // Login Data
   password?: string; // Login Data
@@ -172,7 +178,7 @@ export interface PGAlerts {
   extensionNeeded: boolean;
 }
 
-export interface PostgraduateStudent {
+export interface PostgraduateStudent extends ContactInfo {
   id: string;
   name: string;
   degree: 'MSc' | 'PhD'; // ماجستير أو دكتوراة
@@ -190,7 +196,7 @@ export interface PostgraduateStudent {
   password?: string;
 }
 
-export interface UndergraduateStudent {
+export interface UndergraduateStudent extends ContactInfo {
   id: string;
   name: string;
   year: 'Third' | 'Fourth';
@@ -199,13 +205,21 @@ export interface UndergraduateStudent {
   password?: string;
 }
 
-export interface AlumniMember {
+export interface AlumniMember extends ContactInfo {
   id: string;
   name: string;
   graduationYear: string;
-  email?: string;
-  phone?: string;
   currentJob?: string;
+  username?: string;
+  password?: string;
+}
+
+// واجهة الموظف الجديد
+export interface Employee extends ContactInfo {
+  id: string;
+  name: string;
+  jobTitle: string; // المسمى الوظيفي
+  department: string; // القسم/الإدارة (مثل: المعمل، السكرتارية، العمال)
   username?: string;
   password?: string;
 }
@@ -275,7 +289,6 @@ export interface Lab {
     name: string;
     supervisor: string;
     location: string;
-    // Lab schedule can be a sub-collection or linked logic
 }
 
 export type BookingStatus = 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
@@ -341,6 +354,27 @@ export interface DeptEvent {
     createdAt: number;
 }
 
+// --- أنواع جديدة للهيكل الإداري (Department Formation) ---
+
+export interface OrgMember {
+    name: string;
+    role: string; // e.g. "رئيس اللجنة", "عضو", "أمين المجلس"
+    title?: string; // e.g. "أ.د", "د"
+}
+
+export interface DeptCouncilFormation {
+    id: string;
+    academicYear: string; // e.g. "2024-2025"
+    members: OrgMember[];
+}
+
+export interface DeptCommitteeFormation {
+    id: string;
+    name: string; // e.g. "لجنة المختبرات"
+    academicYear: string;
+    members: OrgMember[];
+}
+
 export interface DashboardStats {
   totalIncoming: number;
   totalOutgoing: number;
@@ -352,4 +386,5 @@ export interface DashboardStats {
   totalStaff: number;
   totalStudentsPG: number;
   totalAlumni: number;
+  totalEmployees: number; // إحصائية جديدة للموظفين
 }

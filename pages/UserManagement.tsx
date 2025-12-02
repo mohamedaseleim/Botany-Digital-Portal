@@ -1,26 +1,27 @@
-
 import React, { useState, useEffect } from 'react';
-import { Users, GraduationCap, UserPlus, Edit, Trash2, Key, Save, X, BookOpen, Briefcase } from 'lucide-react';
+import { Users, GraduationCap, UserPlus, Edit, Trash2, Key, Save, X, BookOpen, Briefcase, BadgeCheck, Phone, Mail, MapPin, MessageCircle } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
-import { StaffMember, PostgraduateStudent, UndergraduateStudent, AlumniMember, StaffSubRole } from '../types';
+import { StaffMember, PostgraduateStudent, UndergraduateStudent, AlumniMember, Employee, StaffSubRole } from '../types';
 import { 
-  getStaff, getPGStudents, getUGStudents, getAlumni,
+  getStaff, getPGStudents, getUGStudents, getAlumni, getEmployees,
   addStaff, updateStaff, deleteStaff,
   addPGStudent, updatePGStudent, deletePGStudent,
   addUGStudent, updateUGStudent, deleteUGStudent,
   addAlumni, updateAlumni, deleteAlumni,
-  logActivity // Import Log Activity
+  addEmployee, updateEmployee, deleteEmployee,
+  logActivity
 } from '../services/dbService';
 
 export const UserManagement: React.FC = () => {
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState<'STAFF' | 'PG' | 'UG' | 'ALUMNI'>('STAFF');
+  const [activeTab, setActiveTab] = useState<'STAFF' | 'PG' | 'UG' | 'ALUMNI' | 'EMPLOYEE'>('STAFF');
   const [loading, setLoading] = useState(false);
   
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [pgList, setPgList] = useState<PostgraduateStudent[]>([]);
   const [ugList, setUgList] = useState<UndergraduateStudent[]>([]);
   const [alumniList, setAlumniList] = useState<AlumniMember[]>([]);
+  const [employeeList, setEmployeeList] = useState<Employee[]>([]);
   
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -29,10 +30,13 @@ export const UserManagement: React.FC = () => {
   // Unified Form State
   const [formData, setFormData] = useState({
     name: '',
+    // Contact Info (New)
     email: '',
     phone: '',
+    whatsapp: '',
+    address: '',
     // Staff
-    subRole: 'FACULTY' as StaffSubRole, // Default
+    subRole: 'FACULTY' as StaffSubRole,
     rank: '', 
     specialization: '', 
     // PG
@@ -41,18 +45,20 @@ export const UserManagement: React.FC = () => {
     supervisor: '', 
     status: 'Researching',
     // UG
-    year: 'Third', // Third or Fourth
+    year: 'Third',
     section: '',
     // Alumni
     graduationYear: '',
     currentJob: '',
+    // Employee
+    jobTitle: '',
+    department: '',
     // Credentials
     username: '',
     password: ''
   });
 
   useEffect(() => {
-    // Check if there is an initialTab passed in navigation state
     if (location.state && (location.state as any).initialTab) {
         setActiveTab((location.state as any).initialTab);
     }
@@ -64,15 +70,11 @@ export const UserManagement: React.FC = () => {
 
   const fetchData = async () => {
     setLoading(true);
-    if (activeTab === 'STAFF') {
-      setStaffList(await getStaff());
-    } else if (activeTab === 'PG') {
-      setPgList(await getPGStudents());
-    } else if (activeTab === 'UG') {
-      setUgList(await getUGStudents());
-    } else if (activeTab === 'ALUMNI') {
-      setAlumniList(await getAlumni());
-    }
+    if (activeTab === 'STAFF') setStaffList(await getStaff());
+    else if (activeTab === 'PG') setPgList(await getPGStudents());
+    else if (activeTab === 'UG') setUgList(await getUGStudents());
+    else if (activeTab === 'ALUMNI') setAlumniList(await getAlumni());
+    else if (activeTab === 'EMPLOYEE') setEmployeeList(await getEmployees());
     setLoading(false);
   };
 
@@ -83,6 +85,8 @@ export const UserManagement: React.FC = () => {
         name: item.name || '',
         email: item.email || '',
         phone: item.phone || '',
+        whatsapp: item.whatsapp || '',
+        address: item.address || '',
         subRole: item.subRole || 'FACULTY',
         rank: item.rank || '',
         specialization: item.specialization || '',
@@ -94,17 +98,20 @@ export const UserManagement: React.FC = () => {
         section: item.section || '',
         graduationYear: item.graduationYear || '',
         currentJob: item.currentJob || '',
+        jobTitle: item.jobTitle || '',
+        department: item.department || '',
         username: item.username || '',
         password: item.password || ''
       });
     } else {
       setEditingId(null);
-      // Generate default credentials
       const randomUser = 'user' + Math.floor(Math.random() * 1000);
       setFormData({
-        name: '', email: '', phone: '', subRole: 'FACULTY', rank: '', specialization: '', 
+        name: '', email: '', phone: '', whatsapp: '', address: '',
+        subRole: 'FACULTY', rank: '', specialization: '', 
         degree: 'MSc', researchTopic: '', supervisor: '', status: 'Researching',
         year: 'Third', section: '', graduationYear: '', currentJob: '',
+        jobTitle: '', department: '',
         username: randomUser, password: '123'
       });
     }
@@ -114,82 +121,98 @@ export const UserManagement: React.FC = () => {
   const handleDelete = async (id: string, name: string) => {
     if (!window.confirm('هل أنت متأكد من حذف هذا المستخدم؟')) return;
     
-    if (activeTab === 'STAFF') await deleteStaff(id);
-    else if (activeTab === 'PG') await deletePGStudent(id);
-    else if (activeTab === 'UG') await deleteUGStudent(id);
-    else if (activeTab === 'ALUMNI') await deleteAlumni(id);
-    
-    // LOG
-    logActivity('حذف مستخدم', 'Admin', `تم حذف المستخدم: ${name} من فئة ${activeTab}`);
-
-    fetchData();
+    try {
+      if (activeTab === 'STAFF') await deleteStaff(id);
+      else if (activeTab === 'PG') await deletePGStudent(id);
+      else if (activeTab === 'UG') await deleteUGStudent(id);
+      else if (activeTab === 'ALUMNI') await deleteAlumni(id);
+      else if (activeTab === 'EMPLOYEE') await deleteEmployee(id);
+      
+      await logActivity('حذف مستخدم', 'Admin', `تم حذف المستخدم: ${name} من فئة ${activeTab}`);
+      fetchData();
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      alert("حدث خطأ أثناء الحذف");
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (activeTab === 'STAFF') {
-      const data = {
-        name: formData.name, email: formData.email, 
-        subRole: formData.subRole,
-        rank: formData.rank, specialization: formData.specialization,
-        username: formData.username, password: formData.password
-      };
-      if (editingId) await updateStaff(editingId, data); else await addStaff(data as any);
+    // بيانات الاتصال المشتركة
+    const contactData = {
+        email: formData.email,
+        phone: formData.phone,
+        whatsapp: formData.whatsapp,
+        address: formData.address
+    };
 
-    } else if (activeTab === 'PG') {
-      
-      if (editingId) {
-          const data = {
-            name: formData.name, degree: formData.degree, researchTopic: formData.researchTopic, 
-            supervisor: formData.supervisor, status: formData.status,
-            username: formData.username, password: formData.password
-          };
-          await updatePGStudent(editingId, data as any);
-      } else {
-          const data = {
-            name: formData.name, degree: formData.degree, researchTopic: formData.researchTopic, 
-            supervisor: formData.supervisor, status: formData.status,
-            username: formData.username, password: formData.password,
-            dates: {
-                enrollment: new Date().toISOString().split('T')[0],
-                registration: '',
-                lastReport: '',
-                nextReportDue: '',
-                expectedDefense: ''
-            },
-            documents: {
-                publishedPapers: [],
-                otherDocuments: []
-            },
-            alerts: {
-                reportOverdue: false,
-                extensionNeeded: false
-            }
-          };
-          await addPGStudent(data as any);
+    try {
+      if (activeTab === 'STAFF') {
+        const data = {
+          name: formData.name, ...contactData,
+          subRole: formData.subRole,
+          rank: formData.rank, specialization: formData.specialization,
+          username: formData.username, password: formData.password
+        };
+        if (editingId) await updateStaff(editingId, data); else await addStaff(data as any);
+
+      } else if (activeTab === 'PG') {
+        if (editingId) {
+            const data = {
+              name: formData.name, ...contactData,
+              degree: formData.degree, researchTopic: formData.researchTopic, 
+              supervisor: formData.supervisor, status: formData.status,
+              username: formData.username, password: formData.password
+            };
+            await updatePGStudent(editingId, data as any);
+        } else {
+            const data = {
+              name: formData.name, ...contactData,
+              degree: formData.degree, researchTopic: formData.researchTopic, 
+              supervisor: formData.supervisor, status: formData.status,
+              username: formData.username, password: formData.password,
+              dates: { enrollment: new Date().toISOString().split('T')[0] },
+              documents: { publishedPapers: [], otherDocuments: [] },
+              alerts: { reportOverdue: false, extensionNeeded: false }
+            };
+            await addPGStudent(data as any);
+        }
+
+      } else if (activeTab === 'UG') {
+        const data = {
+          name: formData.name, ...contactData,
+          year: formData.year, section: formData.section,
+          username: formData.username, password: formData.password
+        };
+        if (editingId) await updateUGStudent(editingId, data as any); else await addUGStudent(data as any);
+
+      } else if (activeTab === 'ALUMNI') {
+        const data = {
+          name: formData.name, ...contactData,
+          graduationYear: formData.graduationYear, currentJob: formData.currentJob,
+          username: formData.username, password: formData.password
+        };
+        if (editingId) await updateAlumni(editingId, data); else await addAlumni(data as any);
+
+      } else if (activeTab === 'EMPLOYEE') {
+        const data = {
+          name: formData.name, ...contactData,
+          jobTitle: formData.jobTitle, department: formData.department,
+          username: formData.username, password: formData.password
+        };
+        if (editingId) await updateEmployee(editingId, data); else await addEmployee(data as any);
       }
+      
+      await logActivity(editingId ? 'تعديل بيانات مستخدم' : 'إضافة مستخدم جديد', 'Admin', `تم ${editingId ? 'تعديل' : 'إضافة'} المستخدم: ${formData.name} في فئة ${activeTab}`);
 
-    } else if (activeTab === 'UG') {
-      const data = {
-        name: formData.name, year: formData.year, section: formData.section,
-        username: formData.username, password: formData.password
-      };
-      if (editingId) await updateUGStudent(editingId, data as any); else await addUGStudent(data as any);
-
-    } else if (activeTab === 'ALUMNI') {
-      const data = {
-        name: formData.name, graduationYear: formData.graduationYear, currentJob: formData.currentJob, email: formData.email, phone: formData.phone,
-        username: formData.username, password: formData.password
-      };
-      if (editingId) await updateAlumni(editingId, data); else await addAlumni(data as any);
+      setIsModalOpen(false);
+      fetchData();
+      alert("تم الحفظ بنجاح ✅");
+    } catch (error) {
+      console.error("Error saving user:", error);
+      alert("حدث خطأ أثناء الحفظ");
     }
-    
-    // LOG
-    logActivity(editingId ? 'تعديل بيانات مستخدم' : 'إضافة مستخدم جديد', 'Admin', `تم ${editingId ? 'تعديل' : 'إضافة'} المستخدم: ${formData.name} في فئة ${activeTab}`);
-
-    setIsModalOpen(false);
-    fetchData();
   };
 
   return (
@@ -200,7 +223,7 @@ export const UserManagement: React.FC = () => {
             <Key className="w-6 h-6 text-green-600" />
             إدارة المستخدمين والصلاحيات
           </h1>
-          <p className="text-gray-500 text-sm">إدارة كافة منتسبي القسم (أساتذة، طلاب، خريجين)</p>
+          <p className="text-gray-500 text-sm">إدارة كافة منتسبي القسم (أساتذة، موظفين، طلاب، خريجين)</p>
         </div>
         <button 
           onClick={() => handleOpenModal()}
@@ -216,6 +239,7 @@ export const UserManagement: React.FC = () => {
         <div className="flex flex-wrap border-b border-gray-200">
           {[
             { id: 'STAFF', icon: Users, label: 'هيئة التدريس' },
+            { id: 'EMPLOYEE', icon: BadgeCheck, label: 'الموظفين والإداريين' },
             { id: 'PG', icon: GraduationCap, label: 'الدراسات العليا' },
             { id: 'UG', icon: BookOpen, label: 'الطلاب (3 و 4)' },
             { id: 'ALUMNI', icon: Briefcase, label: 'الخريجين' },
@@ -242,16 +266,18 @@ export const UserManagement: React.FC = () => {
                 <th className="p-4">الاسم</th>
                 <th className="p-4">
                   {activeTab === 'STAFF' ? 'الدرجة العلمية' : 
+                   activeTab === 'EMPLOYEE' ? 'المسمى الوظيفي' :
                    activeTab === 'PG' ? 'القيد' : 
                    activeTab === 'UG' ? 'الفرقة' : 'سنة التخرج'}
                 </th>
                 <th className="p-4">
                    {activeTab === 'STAFF' ? 'التخصص' : 
+                    activeTab === 'EMPLOYEE' ? 'الإدارة / القسم' :
                     activeTab === 'PG' ? 'المشرف' :
                     activeTab === 'UG' ? 'الشعبة' : 'الوظيفة الحالية'}
                 </th>
+                <th className="p-4">التواصل</th>
                 <th className="p-4">اسم المستخدم</th>
-                <th className="p-4">كلمة المرور</th>
                 <th className="p-4">إجراءات</th>
               </tr>
             </thead>
@@ -260,25 +286,38 @@ export const UserManagement: React.FC = () => {
                 <tr><td colSpan={6} className="p-8 text-center text-gray-500">جاري التحميل...</td></tr>
               ) : (
                 (() => {
-                  const list = activeTab === 'STAFF' ? staffList : activeTab === 'PG' ? pgList : activeTab === 'UG' ? ugList : alumniList;
+                  let list = [];
+                  if (activeTab === 'STAFF') list = staffList;
+                  else if (activeTab === 'EMPLOYEE') list = employeeList;
+                  else if (activeTab === 'PG') list = pgList;
+                  else if (activeTab === 'UG') list = ugList;
+                  else list = alumniList;
+
                   if (list.length === 0) return <tr><td colSpan={6} className="p-8 text-center text-gray-400">لا توجد بيانات</td></tr>
+                  
                   return list.map((item: any) => (
                     <tr key={item.id} className="hover:bg-gray-50">
                       <td className="p-4 font-bold text-gray-800">{item.name}</td>
                       <td className="p-4">
                           <span className="bg-green-50 text-green-700 px-2 py-1 rounded text-xs">
                             {activeTab === 'STAFF' ? item.rank : 
+                             activeTab === 'EMPLOYEE' ? item.jobTitle :
                              activeTab === 'PG' ? item.degree : 
                              activeTab === 'UG' ? (item.year === 'Third' ? 'الثالثة' : 'الرابعة') : item.graduationYear}
                           </span>
                       </td>
                       <td className="p-4">
                           {activeTab === 'STAFF' ? item.specialization : 
+                           activeTab === 'EMPLOYEE' ? item.department :
                            activeTab === 'PG' ? item.supervisor :
                            activeTab === 'UG' ? (item.section || '-') : (item.currentJob || '-')}
                       </td>
+                      <td className="p-4 text-xs text-gray-500">
+                          {item.phone && <div className="flex items-center gap-1 mb-1"><Phone className="w-3 h-3 text-gray-400"/> {item.phone}</div>}
+                          {item.whatsapp && <div className="flex items-center gap-1 mb-1 text-green-600 font-semibold"><MessageCircle className="w-3 h-3"/> {item.whatsapp}</div>}
+                          {item.email && <div className="flex items-center gap-1 text-blue-600"><Mail className="w-3 h-3"/> {item.email}</div>}
+                      </td>
                       <td className="p-4 font-mono text-gray-600">{item.username || '-'}</td>
-                      <td className="p-4 font-mono text-gray-600">{item.password || '****'}</td>
                       <td className="p-4 flex gap-2">
                         <button onClick={() => handleOpenModal(item)} className="text-blue-600 hover:bg-blue-50 p-2 rounded-lg" title="تعديل">
                           <Edit className="w-4 h-4" />
@@ -304,7 +343,10 @@ export const UserManagement: React.FC = () => {
               <h3 className="text-xl font-bold text-gray-800">
                 {editingId ? 'تعديل بيانات' : 'إضافة مستخدم جديد'}
                 <span className="text-sm font-normal text-gray-500 mr-2">
-                  ({activeTab === 'STAFF' ? 'هيئة التدريس' : activeTab === 'PG' ? 'دراسات عليا' : activeTab === 'UG' ? 'طالب جامعي' : 'خريج'})
+                  ({activeTab === 'STAFF' ? 'هيئة التدريس' : 
+                    activeTab === 'EMPLOYEE' ? 'موظف/إداري' :
+                    activeTab === 'PG' ? 'دراسات عليا' : 
+                    activeTab === 'UG' ? 'طالب جامعي' : 'خريج'})
                 </span>
               </h3>
               <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600">
@@ -322,6 +364,69 @@ export const UserManagement: React.FC = () => {
                   className="w-full border p-2 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
                 />
               </div>
+
+              {/* بيانات الاتصال (لكل المستخدمين) */}
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <h4 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
+                      <Phone className="w-4 h-4" /> بيانات الاتصال (اختياري)
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                      <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">رقم الهاتف</label>
+                          <div className="relative">
+                              <Phone className="w-3 h-3 absolute right-3 top-3 text-gray-400" />
+                              <input type="tel" placeholder="01xxxxxxxxx"
+                                  value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                                  className="w-full border p-2 pr-8 rounded bg-white text-sm" />
+                          </div>
+                      </div>
+                      <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">رقم الواتساب</label>
+                          <div className="relative">
+                              <MessageCircle className="w-3 h-3 absolute right-3 top-3 text-green-500" />
+                              <input type="tel" placeholder="01xxxxxxxxx"
+                                  value={formData.whatsapp} onChange={(e) => setFormData({...formData, whatsapp: e.target.value})}
+                                  className="w-full border p-2 pr-8 rounded bg-white text-sm" />
+                          </div>
+                      </div>
+                      <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">البريد الإلكتروني</label>
+                          <div className="relative">
+                              <Mail className="w-3 h-3 absolute right-3 top-3 text-gray-400" />
+                              <input type="email" placeholder="example@azhar.edu.eg"
+                                  value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})}
+                                  className="w-full border p-2 pr-8 rounded bg-white text-sm" />
+                          </div>
+                      </div>
+                      <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">العنوان</label>
+                          <div className="relative">
+                              <MapPin className="w-3 h-3 absolute right-3 top-3 text-gray-400" />
+                              <input type="text" placeholder="المحافظة - المركز"
+                                  value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})}
+                                  className="w-full border p-2 pr-8 rounded bg-white text-sm" />
+                          </div>
+                      </div>
+                  </div>
+              </div>
+
+              {/* Employee Specific */}
+              {activeTab === 'EMPLOYEE' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">المسمى الوظيفي</label>
+                    <input type="text" placeholder="مثال: أخصائي شئون طلاب" required
+                      value={formData.jobTitle} onChange={(e) => setFormData({...formData, jobTitle: e.target.value})}
+                      className="w-full border p-2 rounded-lg outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">القسم / الإدارة</label>
+                    <input type="text" placeholder="مثال: رعاية الشباب" required
+                      value={formData.department} onChange={(e) => setFormData({...formData, department: e.target.value})}
+                      className="w-full border p-2 rounded-lg outline-none" />
+                  </div>
+                </div>
+              )}
 
               {/* Staff Specific */}
               {activeTab === 'STAFF' && (
@@ -347,12 +452,6 @@ export const UserManagement: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">التخصص الدقيق</label>
                     <input type="text" placeholder="مثال: أمراض فيروسية" required
                       value={formData.specialization} onChange={(e) => setFormData({...formData, specialization: e.target.value})}
-                      className="w-full border p-2 rounded-lg outline-none" />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">البريد الإلكتروني</label>
-                    <input type="email"
-                      value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})}
                       className="w-full border p-2 rounded-lg outline-none" />
                   </div>
                 </div>
@@ -426,18 +525,6 @@ export const UserManagement: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">الوظيفة الحالية</label>
                     <input type="text" placeholder="اختياري"
                       value={formData.currentJob} onChange={(e) => setFormData({...formData, currentJob: e.target.value})}
-                      className="w-full border p-2 rounded-lg outline-none" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">البريد الإلكتروني</label>
-                    <input type="email"
-                      value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})}
-                      className="w-full border p-2 rounded-lg outline-none" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">رقم الهاتف</label>
-                    <input type="tel"
-                      value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})}
                       className="w-full border p-2 rounded-lg outline-none" />
                   </div>
                 </div>

@@ -19,15 +19,16 @@ import {
   ArchiveDocument, DocType, DashboardStats, StaffMember, PostgraduateStudent, 
   CourseMaterial, JobOpportunity, UndergraduateStudent, AlumniMember, User, 
   UserRole, Asset, Announcement, ScheduleItem, LabBooking, Lab, LabClass, 
-  GreenhousePlot, GreenhouseHistoryItem, DeptEvent, ActivityLogItem 
+  GreenhousePlot, GreenhouseHistoryItem, DeptEvent, ActivityLogItem, Employee,
+  DeptCouncilFormation, DeptCommitteeFormation 
 } from '../types';
 
-// --- GOOGLE DRIVE UPLOAD SERVICE (Via Apps Script) ---
-
+// --- GOOGLE DRIVE UPLOAD SERVICE ---
+// رابط السكربت الخاص بك للرفع إلى Google Drive
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwuWlnf0aFiBQKNWOsBuNEx_voz3XB3kwAzxL13ZhL6bfsotewcxKKMmkD58e5hDVZ1zA/exec";
 
 export const uploadFileToDrive = async (file: File): Promise<string> => {
-  // التحقق من حجم الملف (Google Apps Script له حدود، مثلاً 50MB)
+  // التحقق من حجم الملف (الحد الأقصى 50 ميجابايت تقريباً)
   if (file.size > 50 * 1024 * 1024) {
       throw new Error("حجم الملف كبير جداً. الحد الأقصى هو 50 ميجابايت.");
   }
@@ -37,7 +38,7 @@ export const uploadFileToDrive = async (file: File): Promise<string> => {
     
     reader.onload = async () => {
       try {
-        // 1. تحويل الملف إلى Base64 (مع إزالة الترويسة data:image/png;base64,)
+        // 1. تحويل الملف إلى Base64
         const resultStr = reader.result as string;
         const base64Data = resultStr.split(',')[1];
         
@@ -54,9 +55,6 @@ export const uploadFileToDrive = async (file: File): Promise<string> => {
         };
 
         // 3. الإرسال إلى Google Apps Script
-        // استخدام 'no-cors' قد يمنع قراءة الرد في بعض الحالات، لكن Apps Script 
-        // معد ليرد بـ JSONP أو CORS headers صحيحة.
-        // سنحاول أولاً بوضع standard mode
         const response = await fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
           body: JSON.stringify(payload)
@@ -76,8 +74,7 @@ export const uploadFileToDrive = async (file: File): Promise<string> => {
 
       } catch (error) {
         console.error("Google Drive Upload Error:", error);
-        // رسالة خطأ واضحة للمستخدم
-        reject(new Error("فشل الاتصال بخدمة Google Drive. تأكد من أنك متصل بالإنترنت وأن خدمة الرفع متاحة."));
+        reject(new Error("فشل الاتصال بخدمة Google Drive. تأكد من أن السكربت منشور بصلاحية 'Anyone'."));
       }
     };
 
@@ -108,7 +105,6 @@ export const getActivityLogs = async (): Promise<ActivityLogItem[]> => {
     const snapshot = await getDocs(q);
     
     let logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ActivityLogItem));
-    // ترتيب محلي
     logs.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     
     return logs;
@@ -126,7 +122,7 @@ export const deleteActivityLog = async (id: string): Promise<void> => {
 
 export const loginUser = async (username: string, password: string): Promise<User | null> => {
   try {
-    // 1. Staff
+    // 1. Staff (أعضاء هيئة التدريس + Admin)
     const staffQ = query(collection(db, 'staff'), where('username', '==', username), where('password', '==', password));
     const staffSnap = await getDocs(staffQ);
     
@@ -144,7 +140,16 @@ export const loginUser = async (username: string, password: string): Promise<Use
       };
     }
 
-    // 2. PG Students
+    // 2. Employees (الموظفين والإداريين - جديد)
+    const empQ = query(collection(db, 'employees'), where('username', '==', username), where('password', '==', password));
+    const empSnap = await getDocs(empQ);
+    if (!empSnap.empty) {
+      const userDoc = empSnap.docs[0].data() as Employee;
+      await logActivity('تسجيل دخول', userDoc.name, `موظف: ${userDoc.jobTitle}`);
+      return { id: empSnap.docs[0].id, name: userDoc.name, role: UserRole.EMPLOYEE, details: userDoc.jobTitle };
+    }
+
+    // 3. PG Students (دراسات عليا)
     const pgQ = query(collection(db, 'pg_students'), where('username', '==', username), where('password', '==', password));
     const pgSnap = await getDocs(pgQ);
     if (!pgSnap.empty) {
@@ -153,7 +158,7 @@ export const loginUser = async (username: string, password: string): Promise<Use
       return { id: pgSnap.docs[0].id, name: userDoc.name, role: UserRole.STUDENT_PG, details: 'دراسات عليا' };
     }
 
-    // 3. UG Students
+    // 4. UG Students (طلاب)
     const ugQ = query(collection(db, 'ug_students'), where('username', '==', username), where('password', '==', password));
     const ugSnap = await getDocs(ugQ);
     if (!ugSnap.empty) {
@@ -162,7 +167,7 @@ export const loginUser = async (username: string, password: string): Promise<Use
       return { id: ugSnap.docs[0].id, name: userDoc.name, role: UserRole.STUDENT_UG, details: 'طالب جامعي' };
     }
 
-    // 4. Alumni
+    // 5. Alumni (خريجين)
     const alumniQ = query(collection(db, 'alumni'), where('username', '==', username), where('password', '==', password));
     const alumniSnap = await getDocs(alumniQ);
     if (!alumniSnap.empty) {
@@ -228,6 +233,7 @@ export const getStats = async (): Promise<DashboardStats> => {
   const staffSnap = await getDocs(collection(db, 'staff'));
   const pgSnap = await getDocs(collection(db, 'pg_students'));
   const alumniSnap = await getDocs(collection(db, 'alumni'));
+  const empSnap = await getDocs(collection(db, 'employees'));
 
   const docs = archiveSnap.docs.map(d => d.data() as ArchiveDocument);
   const today = new Date().toISOString().split('T')[0];
@@ -243,7 +249,8 @@ export const getStats = async (): Promise<DashboardStats> => {
     ).length,
     totalStaff: staffSnap.size,
     totalStudentsPG: pgSnap.size,
-    totalAlumni: alumniSnap.size
+    totalAlumni: alumniSnap.size,
+    totalEmployees: empSnap.size
   };
 };
 
@@ -264,6 +271,25 @@ export const updateStaff = async (id: string, updates: Partial<StaffMember>): Pr
 
 export const deleteStaff = async (id: string): Promise<void> => {
   await deleteDoc(doc(db, 'staff', id));
+};
+
+// --- EMPLOYEE Operations (New) ---
+
+export const getEmployees = async (): Promise<Employee[]> => {
+  const snapshot = await getDocs(collection(db, 'employees'));
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Employee));
+};
+
+export const addEmployee = async (emp: Omit<Employee, 'id'>): Promise<void> => {
+  await addDoc(collection(db, 'employees'), emp);
+};
+
+export const updateEmployee = async (id: string, updates: Partial<Employee>): Promise<void> => {
+  await updateDoc(doc(db, 'employees', id), updates);
+};
+
+export const deleteEmployee = async (id: string): Promise<void> => {
+  await deleteDoc(doc(db, 'employees', id));
 };
 
 // --- PG STUDENT Operations ---
@@ -458,10 +484,8 @@ export const getGreenhousePlots = async (): Promise<GreenhousePlot[]> => {
     await batch.commit();
     return newPlots;
   }
-  
   return plots;
 };
-
 export const updateGreenhousePlot = async (id: string, updates: Partial<GreenhousePlot>): Promise<void> => {
   await updateDoc(doc(db, 'greenhouse_plots', id), updates);
 };
@@ -470,26 +494,20 @@ export const getGreenhouseHistory = async (): Promise<GreenhouseHistoryItem[]> =
   const snapshot = await getDocs(collection(db, 'greenhouse_history'));
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as GreenhouseHistoryItem));
 };
-
 export const addGreenhouseHistory = async (item: Omit<GreenhouseHistoryItem, 'id'>): Promise<void> => {
   await addDoc(collection(db, 'greenhouse_history'), item);
 };
-
 export const deleteGreenhouseHistory = async (id: string): Promise<void> => {
   await deleteDoc(doc(db, 'greenhouse_history', id));
 };
-
-// --- MATERIALS & ANNOUNCEMENTS Operations ---
 
 export const getMaterials = async (): Promise<CourseMaterial[]> => {
   const snapshot = await getDocs(collection(db, 'materials'));
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CourseMaterial));
 };
-
 export const addMaterial = async (material: Omit<CourseMaterial, 'id'>): Promise<void> => {
   await addDoc(collection(db, 'materials'), material);
 };
-
 export const deleteMaterial = async (id: string): Promise<void> => {
   await deleteDoc(doc(db, 'materials', id));
 };
@@ -498,11 +516,9 @@ export const getAnnouncements = async (): Promise<Announcement[]> => {
   const snapshot = await getDocs(collection(db, 'announcements'));
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Announcement));
 };
-
 export const addAnnouncement = async (announcement: Omit<Announcement, 'id'>): Promise<void> => {
   await addDoc(collection(db, 'announcements'), announcement);
 };
-
 export const deleteAnnouncement = async (id: string): Promise<void> => {
   await deleteDoc(doc(db, 'announcements', id));
 };
@@ -511,11 +527,9 @@ export const getSchedules = async (): Promise<ScheduleItem[]> => {
   const snapshot = await getDocs(collection(db, 'schedules'));
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ScheduleItem));
 };
-
 export const addSchedule = async (schedule: Omit<ScheduleItem, 'id'>): Promise<void> => {
   await addDoc(collection(db, 'schedules'), schedule);
 };
-
 export const deleteSchedule = async (id: string): Promise<void> => {
   await deleteDoc(doc(db, 'schedules', id));
 };
@@ -524,17 +538,50 @@ export const getEvents = async (): Promise<DeptEvent[]> => {
   const snapshot = await getDocs(collection(db, 'events'));
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DeptEvent));
 };
-
 export const addEvent = async (event: Omit<DeptEvent, 'id' | 'createdAt'>): Promise<void> => {
   await addDoc(collection(db, 'events'), { ...event, createdAt: Date.now() });
 };
-
 export const updateEvent = async (id: string, updates: Partial<DeptEvent>): Promise<void> => {
   await updateDoc(doc(db, 'events', id), updates);
 };
-
 export const deleteEvent = async (id: string): Promise<void> => {
   await deleteDoc(doc(db, 'events', id));
+};
+
+// --- DEPARTMENT FORMATION Operations (New) ---
+
+export const getDeptCouncils = async (): Promise<DeptCouncilFormation[]> => {
+  const snapshot = await getDocs(collection(db, 'dept_councils'));
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DeptCouncilFormation));
+};
+
+export const addDeptCouncil = async (council: Omit<DeptCouncilFormation, 'id'>): Promise<void> => {
+  await addDoc(collection(db, 'dept_councils'), council);
+};
+
+export const updateDeptCouncil = async (id: string, updates: Partial<DeptCouncilFormation>): Promise<void> => {
+  await updateDoc(doc(db, 'dept_councils', id), updates);
+};
+
+export const deleteDeptCouncil = async (id: string): Promise<void> => {
+  await deleteDoc(doc(db, 'dept_councils', id));
+};
+
+export const getDeptCommittees = async (): Promise<DeptCommitteeFormation[]> => {
+  const snapshot = await getDocs(collection(db, 'dept_committees'));
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DeptCommitteeFormation));
+};
+
+export const addDeptCommittee = async (committee: Omit<DeptCommitteeFormation, 'id'>): Promise<void> => {
+  await addDoc(collection(db, 'dept_committees'), committee);
+};
+
+export const updateDeptCommittee = async (id: string, updates: Partial<DeptCommitteeFormation>): Promise<void> => {
+  await updateDoc(doc(db, 'dept_committees', id), updates);
+};
+
+export const deleteDeptCommittee = async (id: string): Promise<void> => {
+  await deleteDoc(doc(db, 'dept_committees', id));
 };
 
 // --- HELPER: SEED INITIAL DATA (Run Once) ---
@@ -551,7 +598,12 @@ export const seedInitialData = async () => {
     name: 'Admin User', 
     rank: 'رئيس النظام', 
     specialization: 'IT', 
+    // Contact Info Seed
     email: 'admin@botany.com', 
+    phone: '01000000000',
+    whatsapp: '01000000000',
+    address: 'إدارة الكلية',
+    
     username: 'admin', 
     password: 'admin', 
     subRole: 'FACULTY'
