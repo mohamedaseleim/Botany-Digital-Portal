@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, UploadCloud, Save, Loader2, FileText } from 'lucide-react';
 import { ArchiveDocument, DocType, User } from '../types';
-import { addDocument, generateSerial, getDocuments, uploadFileToDrive } from '../services/dbService';
+// ✅ تم إصلاح الاستيراد (دمج السطرين)
 import { addDocument, generateSerial, getDocuments, uploadFileToDrive, logActivity } from '../services/dbService';
 
 interface OutgoingProps {
@@ -75,6 +75,7 @@ export const Outgoing: React.FC<OutgoingProps> = ({ user }) => {
         fileUrl: fileUrl || "", 
       });
       
+      // ✅ تسجيل النشاط (موجود وصحيح)
       await logActivity('إضافة صادر', user.name, `موضوع: ${formData.subject} - رقم: ${formData.serialNumber}`);
       
       setFormVisible(false);
@@ -182,7 +183,6 @@ export const Outgoing: React.FC<OutgoingProps> = ({ user }) => {
                     <span className="text-gray-600 text-sm">
                       {file ? file.name : 'اضغط لاختيار ملف أو اسحبه هنا'}
                     </span>
-                    {/* تم تحديث النص هنا */}
                     <span className={`text-xs ${submitting ? 'text-green-600 font-bold animate-pulse' : 'text-gray-400'}`}>
                         {submitting ? 'جاري الرفع إلى Google Drive...' : 'يتم التخزين في Google Drive'}
                     </span>

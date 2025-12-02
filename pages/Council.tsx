@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, UploadCloud, Save, Loader2, FileText } from 'lucide-react';
 import { ArchiveDocument, DocType, User } from '../types';
-import { addDocument, generateSerial, getDocuments, uploadFileToDrive } from '../services/dbService';
+// ✅ تم إصلاح الاستيراد (دمج السطرين)
+import { addDocument, generateSerial, getDocuments, uploadFileToDrive, logActivity } from '../services/dbService';
 
 interface CouncilProps {
   user: User;
@@ -13,12 +14,11 @@ export const Council: React.FC<CouncilProps> = ({ user }) => {
   const [documents, setDocuments] = useState<ArchiveDocument[]>([]);
   const [formVisible, setFormVisible] = useState(false);
   
-  // Form State
   const [formData, setFormData] = useState({
-    serialNumber: '', // رقم الجلسة
+    serialNumber: '', 
     date: new Date().toISOString().split('T')[0],
-    subject: '', // جدول الأعمال / الموضوع
-    notes: '', // القرارات
+    subject: '', 
+    notes: '', 
   });
   const [file, setFile] = useState<File | null>(null);
 
@@ -37,7 +37,7 @@ export const Council: React.FC<CouncilProps> = ({ user }) => {
     const serial = await generateSerial(DocType.DEPARTMENT_COUNCIL);
     setFormData({
       ...formData,
-      serialNumber: serial, // You might want a different serial format for meetings (e.g. 1/2024)
+      serialNumber: serial, 
       date: new Date().toISOString().split('T')[0],
       subject: '',
       notes: ''
@@ -65,8 +65,12 @@ export const Council: React.FC<CouncilProps> = ({ user }) => {
         fileUrl: fileUrl || undefined,
       });
 
+      // ✅ تسجيل نشاط مجلس القسم
+      await logActivity('مجلس قسم', user.name, `تسجيل جلسة رقم: ${formData.serialNumber}`);
+
       setFormVisible(false);
       fetchDocs();
+      alert('تم حفظ الجلسة بنجاح');
     } catch (error) {
       console.error(error);
       alert('حدث خطأ أثناء الحفظ');

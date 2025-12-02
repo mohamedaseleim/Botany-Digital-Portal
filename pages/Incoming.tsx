@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, UploadCloud, Save, Loader2, FileText, CheckCircle2, CircleDashed, Clock } from 'lucide-react';
 import { ArchiveDocument, DocType, User, UserRole } from '../types';
-import { addDocument, generateSerial, getDocuments, uploadFileToDrive, updateDocument } from '../services/dbService';
-import { addDocument, generateSerial, getDocuments, uploadFileToDrive, logActivity } from '../services/dbService';
+// ✅ تم إصلاح الاستيراد (دمج السطرين)
+import { addDocument, generateSerial, getDocuments, uploadFileToDrive, updateDocument, logActivity } from '../services/dbService';
 
 interface IncomingProps {
   user: User;
@@ -81,7 +81,8 @@ export const Incoming: React.FC<IncomingProps> = ({ user }) => {
         isFollowedUp: false, // Default state
       });
 
-      await logActivity('متابعة وارد', user.name, `تغيير حالة المتابعة للخطاب: ${doc.serialNumber}`);
+      // ✅ تم تصحيح الخطأ هنا: استخدام formData بدلاً من doc، وتغيير نص الرسالة
+      await logActivity('إضافة وارد', user.name, `موضوع: ${formData.subject} - رقم: ${formData.serialNumber}`);
       
       setFormVisible(false);
       fetchDocs();
@@ -102,6 +103,12 @@ export const Incoming: React.FC<IncomingProps> = ({ user }) => {
     
     try {
       await updateDocument(doc.id, { isFollowedUp: newStatus });
+      // ✅ تسجيل نشاط تغيير الحالة
+      await logActivity(
+        'متابعة وارد', 
+        user.name, 
+        `تغيير حالة المتابعة للخطاب رقم ${doc.serialNumber} إلى: ${newStatus ? 'تمت' : 'مطلوب'}`
+      );
     } catch (error) {
       // Revert on error
       setDocuments(docs => docs.map(d => d.id === doc.id ? { ...d, isFollowedUp: !newStatus } : d));

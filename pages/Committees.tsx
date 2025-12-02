@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, UploadCloud, Save, Loader2, FileText } from 'lucide-react';
 import { ArchiveDocument, DocType, User } from '../types';
-import { addDocument, generateSerial, getDocuments, uploadFileToDrive } from '../services/dbService';
+// ✅ تم إصلاح الاستيراد (دمج السطرين في سطر واحد)
+import { addDocument, getDocuments, uploadFileToDrive, logActivity } from '../services/dbService';
 
 interface CommitteesProps {
   user: User;
@@ -13,13 +14,12 @@ export const Committees: React.FC<CommitteesProps> = ({ user }) => {
   const [documents, setDocuments] = useState<ArchiveDocument[]>([]);
   const [formVisible, setFormVisible] = useState(false);
   
-  // Form State
   const [formData, setFormData] = useState({
-    serialNumber: '', // رقم الجلسة
+    serialNumber: '',
     date: new Date().toISOString().split('T')[0],
-    committeeName: '', // اسم اللجنة (stored in sender field)
-    subject: '', // الموضوع
-    notes: '', // التوصيات
+    committeeName: '', 
+    subject: '',
+    notes: '',
   });
   const [file, setFile] = useState<File | null>(null);
 
@@ -44,8 +44,6 @@ export const Committees: React.FC<CommitteesProps> = ({ user }) => {
   };
 
   const handleInitForm = async () => {
-    // Generate a simple serial if needed, but manual entry might be better for committees
-    // Let's assume manual or auto based on user preference. We'll leave it open.
     setFormData({
       ...formData,
       serialNumber: '', 
@@ -72,14 +70,18 @@ export const Committees: React.FC<CommitteesProps> = ({ user }) => {
         type: DocType.COMMITTEE_MEETING,
         serialNumber: formData.serialNumber,
         date: formData.date,
-        sender: formData.committeeName, // Storing committee name in 'sender' field
+        sender: formData.committeeName,
         subject: formData.subject,
         notes: formData.notes,
         fileUrl: fileUrl || undefined,
       });
 
+      // ✅ تسجيل النشاط
+      await logActivity('اجتماع لجنة', user.name, `لجنة: ${formData.committeeName} - جلسة رقم: ${formData.serialNumber}`);
+      
       setFormVisible(false);
       fetchDocs();
+      alert('تم حفظ الاجتماع بنجاح');
     } catch (error) {
       console.error(error);
       alert('حدث خطأ أثناء الحفظ');

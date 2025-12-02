@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Search as SearchIcon, Filter, X, FileText } from 'lucide-react';
 import { ArchiveDocument, DocType, User } from '../types';
-import { getDocuments, deleteDocument } from '../services/dbService';
+// ✅ تم دمج الاستيرادات وحذف غير المستخدم (مثل addDocument وغيرها التي لا نحتاجها في البحث)
+import { getDocuments, deleteDocument, logActivity } from '../services/dbService';
 
 interface SearchProps {
     user: User; // To check permissions for delete
@@ -69,13 +70,15 @@ export const Search: React.FC<SearchProps> = ({ user }) => {
     setFilteredDocs(documents);
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('هل أنت متأكد من حذف هذا المستند؟')) {
-        await deleteDocument(id);
-        fetchData(); // Refresh
-    }
+ const handleDelete = async (id: string) => {
+      if (window.confirm('هل أنت متأكد من حذف هذا المستند؟')) {
+          const doc = documents.find(d => d.id === id); // اعثر على المستند لتسجيل اسمه قبل الحذف
+          await deleteDocument(id);
+          await logActivity('حذف من الأرشيف', user.name, `تم حذف مستند: ${doc?.serialNumber || id} - النوع: ${doc?.type}`);
+          fetchData();
+      }
   };
-
+    
   const getTypeLabel = (type: DocType) => {
       switch(type) {
           case DocType.INCOMING: return 'وارد';

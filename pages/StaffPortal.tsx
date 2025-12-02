@@ -1,10 +1,14 @@
-
 import React, { useEffect, useState } from 'react';
-import { Mail, Award, UserCircle, Briefcase, GraduationCap, FileText, CheckCircle2, Download, X, Edit, Save, UploadCloud, Loader2, Coins, User, Plus, Trash2, Plane, BookOpen, Globe } from 'lucide-react';
-import { StaffMember, StaffSubRole, StaffDocuments, StaffDocItem, CoursePortfolio } from '../types';
-import { getStaff, updateStaff } from '../services/dbService';
+import { Mail, Award, UserCircle, Briefcase, GraduationCap, FileText, CheckCircle2, Download, X, Edit, Save, UploadCloud, Loader2, Coins, User as UserIcon, Plus, Trash2, Plane, BookOpen, Globe } from 'lucide-react';
+import { StaffMember, StaffSubRole, StaffDocuments, StaffDocItem, CoursePortfolio, User } from '../types';
+import { getStaff, updateStaff, logActivity } from '../services/dbService';
 
-export const StaffPortal: React.FC = () => {
+// 1. تعريف الخصائص لاستقبال المستخدم
+interface StaffPortalProps {
+    user?: User;
+}
+
+export const StaffPortal: React.FC<StaffPortalProps> = ({ user }) => {
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [filteredStaff, setFilteredStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,12 +139,21 @@ export const StaffPortal: React.FC = () => {
           // Update DB
           await updateStaff(selectedMember.id, { documents: editForm });
           
+          // 2. تسجيل النشاط (Log Activity)
+          const userName = user?.name || 'Unknown';
+          await logActivity(
+              'تحديث ملف موظف', 
+              userName, 
+              `تم تحديث الملف الرقمي للدكتور: ${selectedMember.name}`
+          );
+
           // Update Local State
           const updatedMember = { ...selectedMember, documents: editForm };
           setStaff(prev => prev.map(m => m.id === selectedMember.id ? updatedMember : m));
           setSelectedMember(updatedMember);
           
           setIsEditing(false);
+          alert('تم حفظ التغييرات بنجاح');
       } catch (error) {
           console.error("Failed to save portfolio", error);
           alert("حدث خطأ أثناء حفظ الملف");
@@ -388,7 +401,7 @@ export const StaffPortal: React.FC = () => {
                       {/* --- 3. Personal & Legal (شخصية وقانونية) --- */}
                       <section>
                           <h4 className="text-lg font-bold text-gray-800 border-b pb-2 mb-4 flex items-center gap-2">
-                              <User className="w-5 h-5 text-blue-600" /> وثائق شخصية وقانونية
+                              <UserIcon className="w-5 h-5 text-blue-600" /> وثائق شخصية وقانونية
                           </h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <DocCard 
