@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, UploadCloud, Save, Loader2, FileText } from 'lucide-react';
 import { ArchiveDocument, DocType, User } from '../types';
 import { addDocument, generateSerial, getDocuments, uploadFileToDrive } from '../services/dbService';
+import { addDocument, generateSerial, getDocuments, uploadFileToDrive, logActivity } from '../services/dbService';
 
 interface OutgoingProps {
   user: User;
