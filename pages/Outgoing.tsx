@@ -73,7 +73,9 @@ export const Outgoing: React.FC<OutgoingProps> = ({ user }) => {
         notes: formData.notes,
         fileUrl: fileUrl || "", 
       });
-
+      
+      await logActivity('إضافة صادر', user.name, `موضوع: ${formData.subject} - رقم: ${formData.serialNumber}`);
+      
       setFormVisible(false);
       fetchDocs();
       alert("تم الحفظ بنجاح ✅");
