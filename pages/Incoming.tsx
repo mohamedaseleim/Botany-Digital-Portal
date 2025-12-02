@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, UploadCloud, Save, Loader2, FileText, CheckCircle2, CircleDashed, Clock } from 'lucide-react';
 import { ArchiveDocument, DocType, User, UserRole } from '../types';
 import { addDocument, generateSerial, getDocuments, uploadFileToDrive, updateDocument } from '../services/dbService';
+import { addDocument, generateSerial, getDocuments, uploadFileToDrive, logActivity } from '../services/dbService';
 
 interface IncomingProps {
   user: User;
@@ -80,6 +81,8 @@ export const Incoming: React.FC<IncomingProps> = ({ user }) => {
         isFollowedUp: false, // Default state
       });
 
+      await logActivity('متابعة وارد', user.name, `تغيير حالة المتابعة للخطاب: ${doc.serialNumber}`);
+      
       setFormVisible(false);
       fetchDocs();
     } catch (error) {
