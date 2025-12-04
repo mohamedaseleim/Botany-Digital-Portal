@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
     Library, Search, Filter, Plus, FileText, Book, GraduationCap, 
-    Download, Lock, Send, Copy, ExternalLink, Globe, ShieldCheck, 
-    Eye, X, Loader2, CheckCircle2, AlertCircle, Edit, Trash2
+    Download, Lock, Copy, ExternalLink, 
+    Eye, X, Loader2, CheckCircle2, AlertCircle, Edit, Trash2, Save, UploadCloud
 } from 'lucide-react';
 import { User, UserRole, RepositoryItem, RepositoryItemType, RepositoryRequest } from '../types';
 import { 
@@ -25,13 +25,27 @@ export const ScientificRepository: React.FC<ScientificRepositoryProps> = ({ user
     // Search & Filter
     const [searchTerm, setSearchTerm] = useState('');
     const [typeFilter, setTypeFilter] = useState<string>('ALL');
-    const [yearFilter, setYearFilter] = useState('');
 
     // Add/Edit Form State
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [addType, setAddType] = useState<RepositoryItemType>('JOURNAL_PAPER');
-    const [formData, setFormData] = useState<any>({});
+    
+    // تهيئة البيانات بقيم افتراضية لتجنب الأخطاء
+    const initialFormState = {
+        titleAr: '',
+        titleEn: '',
+        abstract: '',
+        authorNames: '',
+        journalName: '',
+        conferenceName: '',
+        doi: '',
+        publicationYear: new Date().getFullYear().toString(),
+        supervisors: '',
+        shelfLocation: '',
+    };
+    const [formData, setFormData] = useState<any>(initialFormState);
+    
     const [file, setFile] = useState<File | null>(null);
     const [privateFile, setPrivateFile] = useState<File | null>(null);
     const [submitting, setSubmitting] = useState(false);
@@ -72,9 +86,11 @@ export const ScientificRepository: React.FC<ScientificRepositoryProps> = ({ user
     const handleCopyCitation = (item: RepositoryItem) => {
         let citation = '';
         if (item.type.includes('PAPER')) {
-            citation = `${item.authorNames} (${item.publicationYear}). "${item.titleAr}". ${item.journalName || item.conferenceName}, ${item.volume || ''}(${item.issue || ''}), ${item.pages || ''}. ${item.doi ? `DOI: ${item.doi}` : ''}`;
+            citation = `${item.authorNames || ''} (${item.publicationYear}). "${item.titleAr}". ${item.journalName || item.conferenceName || ''}, ${item.volume || ''}(${item.issue || ''}), ${item.pages || ''}. ${item.doi ? `DOI: ${item.doi}` : ''}`;
         } else if (item.type.includes('THESIS')) {
-            citation = `${item.authorNames} (${item.publicationYear}). ${item.titleAr}. [${item.type === 'THESIS_MASTER' ? 'Master Thesis' : 'PhD Thesis'}]. Al-Azhar University.`;
+            citation = `${item.authorNames || ''} (${item.publicationYear}). ${item.titleAr}. [${item.type === 'THESIS_MASTER' ? 'Master Thesis' : 'PhD Thesis'}]. Al-Azhar University.`;
+        } else {
+            citation = `${item.authorNames || item.publisher || ''} (${item.publicationYear}). ${item.titleAr}. ${item.publisher || ''}.`;
         }
         navigator.clipboard.writeText(citation);
         alert('تم نسخ الاستشهاد المرجعي');
@@ -84,7 +100,7 @@ export const ScientificRepository: React.FC<ScientificRepositoryProps> = ({ user
         try {
             return await uploadFileToDrive(file);
         } catch (e) {
-            alert('فشل رفع الملف');
+            alert('فشل رفع الملف: ' + (e as Error).message);
             return null;
         }
     };
@@ -94,17 +110,16 @@ export const ScientificRepository: React.FC<ScientificRepositoryProps> = ({ user
         setEditingId(item.id);
         setAddType(item.type);
         setFormData({
-            titleAr: item.titleAr,
+            titleAr: item.titleAr || '',
             titleEn: item.titleEn || '',
             abstract: item.abstract || '',
             authorNames: item.authorNames || '',
             journalName: item.journalName || '',
             conferenceName: item.conferenceName || '',
             doi: item.doi || '',
-            publicationYear: item.publicationYear,
+            publicationYear: item.publicationYear || '',
             supervisors: item.supervisors || '',
             shelfLocation: item.shelfLocation || '',
-            // Add other fields as needed
         });
         setActiveTab('ADD');
     };
@@ -133,6 +148,7 @@ export const ScientificRepository: React.FC<ScientificRepositoryProps> = ({ user
             const itemData = {
                 ...formData,
                 type: addType,
+                // Only update URLs if new files are uploaded
                 ...(publicUrl && { fileUrl: publicUrl }),
                 ...(privateUrl && { privateFileUrl: privateUrl }),
                 addedBy: user.id,
@@ -151,9 +167,10 @@ export const ScientificRepository: React.FC<ScientificRepositoryProps> = ({ user
                 alert('تمت الإضافة بنجاح');
             }
 
+            // Reset Form
             setIsEditing(false);
             setEditingId(null);
-            setFormData({});
+            setFormData(initialFormState);
             setFile(null);
             setPrivateFile(null);
             setActiveTab('BROWSE');
@@ -193,12 +210,18 @@ export const ScientificRepository: React.FC<ScientificRepositoryProps> = ({ user
         fetchData(); 
     };
 
+    const handleAddNewClick = () => {
+        setActiveTab('ADD'); 
+        setFormData(initialFormState); 
+        setEditingId(null); 
+        setIsEditing(false);
+    };
+
     // --- Components ---
 
     const renderCard = (item: RepositoryItem) => {
         const isPaper = item.type.includes('PAPER');
         const isThesis = item.type.includes('THESIS');
-        const isBook = item.type === 'BOOK';
         const isOwner = item.addedBy === user.id || user.role === UserRole.ADMIN;
 
         return (
@@ -319,7 +342,7 @@ export const ScientificRepository: React.FC<ScientificRepositoryProps> = ({ user
                                 تصفح المكتبة
                             </button>
                             <button 
-                                onClick={() => { setActiveTab('ADD'); setFormData({}); setEditingId(null); setIsEditing(false); }} 
+                                onClick={handleAddNewClick} 
                                 className={`px-4 py-2 rounded-md text-sm font-bold transition-colors ${activeTab === 'ADD' ? 'bg-white shadow text-green-700' : 'text-gray-500'}`}
                             >
                                 إضافة جديد
@@ -405,7 +428,12 @@ export const ScientificRepository: React.FC<ScientificRepositoryProps> = ({ user
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">{addType === 'JOURNAL_PAPER' ? 'اسم المجلة' : 'اسم المؤتمر'}</label>
-                                            <input type="text" className="w-full border p-2 rounded-lg" value={addType === 'JOURNAL_PAPER' ? (formData.journalName || '') : (formData.conferenceName || '')} onChange={e => addType === 'JOURNAL_PAPER' ? setFormData({...formData, journalName: e.target.value}) : setFormData({...formData, conferenceName: e.target.value})} />
+                                            {/* تم فصل الحقول لتجنب التداخل */}
+                                            {addType === 'JOURNAL_PAPER' ? (
+                                                <input type="text" className="w-full border p-2 rounded-lg" value={formData.journalName || ''} onChange={e => setFormData({...formData, journalName: e.target.value})} />
+                                            ) : (
+                                                <input type="text" className="w-full border p-2 rounded-lg" value={formData.conferenceName || ''} onChange={e => setFormData({...formData, conferenceName: e.target.value})} />
+                                            )}
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">رابط DOI</label>
@@ -445,12 +473,18 @@ export const ScientificRepository: React.FC<ScientificRepositoryProps> = ({ user
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-xs font-bold text-gray-500 mb-1">ملف للعرض العام (Public PDF)</label>
-                                            <input type="file" className="text-sm" onChange={e => setFile(e.target.files ? e.target.files[0] : null)} />
+                                            <div className="flex items-center gap-2">
+                                                <UploadCloud className="w-4 h-4 text-gray-400"/>
+                                                <input type="file" className="text-sm" onChange={e => setFile(e.target.files ? e.target.files[0] : null)} />
+                                            </div>
                                             <p className="text-[10px] text-gray-400 mt-1">يظهر لجميع الزوار (مثلاً: الملخص فقط)</p>
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-gray-500 mb-1">النسخة الكاملة (للحفظ فقط)</label>
-                                            <input type="file" className="text-sm" onChange={e => setPrivateFile(e.target.files ? e.target.files[0] : null)} />
+                                            <div className="flex items-center gap-2">
+                                                <Lock className="w-4 h-4 text-amber-400"/>
+                                                <input type="file" className="text-sm" onChange={e => setPrivateFile(e.target.files ? e.target.files[0] : null)} />
+                                            </div>
                                             <p className="text-[10px] text-gray-400 mt-1">لا تظهر إلا بطلب خاص وموافقة المؤلف</p>
                                         </div>
                                     </div>

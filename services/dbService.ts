@@ -22,7 +22,7 @@ import {
   GreenhousePlot, GreenhouseHistoryItem, DeptEvent, ActivityLogItem, Employee,
   DeptCouncilFormation, DeptCommitteeFormation, AnnualReport, ResearchPlan, ResearchProposal,
   LeaveRequest, LeaveStatus, CareerMovementRequest, LoanRequest,
-  RepositoryItem, RepositoryRequest // استيراد الأنواع الجديدة
+  RepositoryItem, RepositoryRequest
 } from '../types';
 
 // --- GOOGLE DRIVE UPLOAD SERVICE ---
@@ -119,7 +119,6 @@ export const deleteActivityLog = async (id: string): Promise<void> => {
 
 export const loginUser = async (username: string, password: string): Promise<User | null> => {
   try {
-    // 1. Staff
     const staffQ = query(collection(db, 'staff'), where('username', '==', username), where('password', '==', password));
     const staffSnap = await getDocs(staffQ);
     
@@ -137,7 +136,6 @@ export const loginUser = async (username: string, password: string): Promise<Use
       };
     }
 
-    // 2. Employees
     const empQ = query(collection(db, 'employees'), where('username', '==', username), where('password', '==', password));
     const empSnap = await getDocs(empQ);
     if (!empSnap.empty) {
@@ -146,7 +144,6 @@ export const loginUser = async (username: string, password: string): Promise<Use
       return { id: empSnap.docs[0].id, name: userDoc.name, role: UserRole.EMPLOYEE, details: userDoc.jobTitle };
     }
 
-    // 3. PG Students
     const pgQ = query(collection(db, 'pg_students'), where('username', '==', username), where('password', '==', password));
     const pgSnap = await getDocs(pgQ);
     if (!pgSnap.empty) {
@@ -155,7 +152,6 @@ export const loginUser = async (username: string, password: string): Promise<Use
       return { id: pgSnap.docs[0].id, name: userDoc.name, role: UserRole.STUDENT_PG, details: 'دراسات عليا' };
     }
 
-    // 4. UG Students
     const ugQ = query(collection(db, 'ug_students'), where('username', '==', username), where('password', '==', password));
     const ugSnap = await getDocs(ugQ);
     if (!ugSnap.empty) {
@@ -164,7 +160,6 @@ export const loginUser = async (username: string, password: string): Promise<Use
       return { id: ugSnap.docs[0].id, name: userDoc.name, role: UserRole.STUDENT_UG, details: 'طالب جامعي' };
     }
 
-    // 5. Alumni
     const alumniQ = query(collection(db, 'alumni'), where('username', '==', username), where('password', '==', password));
     const alumniSnap = await getDocs(alumniQ);
     if (!alumniSnap.empty) {
@@ -622,6 +617,33 @@ export const getActiveResearchPlan = async (): Promise<ResearchPlan | null> => {
     return getActiveResearchPlan();
 };
 
+export const getAllResearchPlans = async (): Promise<ResearchPlan[]> => {
+    const q = query(collection(db, 'research_plans'), orderBy('startDate', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ResearchPlan));
+};
+
+export const addResearchPlan = async (plan: Omit<ResearchPlan, 'id'>): Promise<void> => {
+    // If new plan is active, archive previous active plans (optional but good practice)
+    if (plan.status === 'ACTIVE') {
+        const active = await getActiveResearchPlan();
+        if (active) await archiveResearchPlan(active.id);
+    }
+    await addDoc(collection(db, 'research_plans'), plan);
+};
+
+export const updateResearchPlan = async (id: string, updates: Partial<ResearchPlan>): Promise<void> => {
+    await updateDoc(doc(db, 'research_plans', id), updates);
+};
+
+export const deleteResearchPlan = async (id: string): Promise<void> => {
+    await deleteDoc(doc(db, 'research_plans', id));
+};
+
+export const archiveResearchPlan = async (id: string): Promise<void> => {
+    await updateDoc(doc(db, 'research_plans', id), { status: 'ARCHIVED' });
+};
+
 export const getProposals = async (): Promise<ResearchProposal[]> => {
     const q = query(collection(db, 'research_proposals'), orderBy('createdAt', 'desc'));
     const snapshot = await getDocs(q);
@@ -629,8 +651,11 @@ export const getProposals = async (): Promise<ResearchProposal[]> => {
 };
 
 export const addProposal = async (proposal: Omit<ResearchProposal, 'id' | 'createdAt'>): Promise<void> => {
+    // Sanitization: Remove undefined values to prevent Firebase errors
+    const cleanProposal = JSON.parse(JSON.stringify(proposal));
+    
     await addDoc(collection(db, 'research_proposals'), {
-        ...proposal,
+        ...cleanProposal,
         createdAt: Date.now()
     });
 };
@@ -680,7 +705,7 @@ export const getAllLeaves = async (): Promise<LeaveRequest[]> => {
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LeaveRequest));
 };
 
-// --- CAREER MOVEMENT Operations (N, S, L) ---
+// --- CAREER MOVEMENT Operations ---
 
 export const addCareerRequest = async (request: Omit<CareerMovementRequest, 'id' | 'createdAt'>): Promise<void> => {
     await addDoc(collection(db, 'career_requests'), {
@@ -738,7 +763,6 @@ export const addRepositoryItem = async (item: Omit<RepositoryItem, 'id' | 'creat
     });
 };
 
-// طلب نسخة كاملة
 export const requestFullText = async (request: Omit<RepositoryRequest, 'id' | 'createdAt' | 'status'>): Promise<void> => {
     await addDoc(collection(db, 'repository_requests'), {
         ...request,
@@ -747,7 +771,6 @@ export const requestFullText = async (request: Omit<RepositoryRequest, 'id' | 'c
     });
 };
 
-// جلب الطلبات الواردة لعضو معين (للموافقة عليها)
 export const getMyRepoRequests = async (userId: string): Promise<RepositoryRequest[]> => {
     const q = query(
         collection(db, 'repository_requests'), 
@@ -758,7 +781,6 @@ export const getMyRepoRequests = async (userId: string): Promise<RepositoryReque
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RepositoryRequest));
 };
 
-// الرد على الطلب
 export const respondToRepoRequest = async (requestId: string, status: 'APPROVED' | 'REJECTED') => {
     await updateDoc(doc(db, 'repository_requests', requestId), { 
         status,
@@ -766,7 +788,6 @@ export const respondToRepoRequest = async (requestId: string, status: 'APPROVED'
     });
 };
 
-// إحصائيات المستودع
 export const getRepoStats = async () => {
     const snapshot = await getDocs(collection(db, 'repository_items'));
     const items = snapshot.docs.map(d => d.data() as RepositoryItem);

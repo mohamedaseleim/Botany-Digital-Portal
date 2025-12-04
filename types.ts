@@ -68,41 +68,62 @@ export interface StaffDocItem {
 }
 
 export interface StaffDocuments {
-    appointmentDecision?: string; 
-    joiningReport?: string; 
-    promotionDecisions?: StaffDocItem[]; 
-    adminPositions?: StaffDocItem[]; 
-    phdCert?: string; 
-    phdEquivalence?: string; 
-    masterCert?: string; 
-    bachelorCert?: string; 
-    idCard?: string; 
-    birthCert?: string; 
-    militaryStatus?: string; 
-    criminalRecord?: string; 
+    // 1. Employment & Promotions (التعيين والترقيات)
+    appointmentDecision?: string; // قرار التعيين الأول
+    joiningReport?: string; // محضر استلام العمل
+    
+    // Changed to arrays for Multi-upload
+    promotionDecisions?: StaffDocItem[]; // قرارات الترقية
+    adminPositions?: StaffDocItem[]; // قرارات المناصب الإدارية
+
+    // 2. Qualifications (المؤهلات)
+    phdCert?: string; // الدكتوراه
+    phdEquivalence?: string; // معادلة الدكتوراه
+    masterCert?: string; // شهادة الماجستير
+    bachelorCert?: string; // شهادة البكالوريوس
+
+    // 3. Personal & Legal (شخصية وقانونية)
+    idCard?: string; // صورة البطاقة
+    birthCert?: string; // شهادة الميلاد
+    militaryStatus?: string; // الموقف من التجنيد
+    criminalRecord?: string; // صحيفة الحالة الجنائية
     cv?: string;
-    financialDisclosure?: string; 
-    socialInsuranceNum?: string; 
-    statusStatement?: string; 
-    vacationDecisions?: string; 
-    enrollmentStatus?: string; 
-    progressReports?: StaffDocItem[]; 
-    extensionDecisions?: StaffDocItem[]; 
-    efficiencyReports?: StaffDocItem[]; 
-    penaltiesRecord?: string; 
-    studyLeaveDecision?: string; 
-    returnFromScholarship?: string; 
-    fldcCerts?: string; 
-    googleScholarLink?: string; 
-    publicationsListFile?: string; 
-    supervisionRecord?: string; 
-    conferenceCerts?: StaffDocItem[]; 
-    arbitrationCerts?: StaffDocItem[]; 
-    communityServiceDocs?: StaffDocItem[]; 
-    publications?: { title: string, url: string, date: string }[]; 
+
+    // 4. Financial & Status (مالية وإجازات)
+    financialDisclosure?: string; // إقرار الذمة المالية
+    socialInsuranceNum?: string; // الرقم التأميني (New)
+    statusStatement?: string; // بيان حالة وظيفية
+    vacationDecisions?: string; // قرارات الإجازات/الإعارات
+    
+    // 5. Academic Specific (Assistant) - RESTRUCTURED
+    enrollmentStatus?: string; // إفادة القيد (حديثة)
+    progressReports?: StaffDocItem[]; // تقارير الصلاحية (Multi)
+    extensionDecisions?: StaffDocItem[]; // قرارات مد فترة التسجيل (Multi)
+    
+    // 6. Performance & Penalties (Assistant) - NEW
+    efficiencyReports?: StaffDocItem[]; // تقارير الكفاءة السنوية (Multi)
+    penaltiesRecord?: string; // سجل الجزاءات
+    
+    // 7. Scholarships (Assistant) - NEW
+    studyLeaveDecision?: string; // قرار البعثة/الإجازة الدراسية
+    returnFromScholarship?: string; // إقرار العودة
+
+    fldcCerts?: string; // دورات القدرات
+
+    // 8. Scientific Activity & Supervision (Faculty) - UPDATED
+    googleScholarLink?: string; // رابط جوجل سكولار
+    publicationsListFile?: string; // ملف قائمة الأبحاث (Updated List)
+    supervisionRecord?: string; // سجل الإشراف (Updated Record)
+    
+    conferenceCerts?: StaffDocItem[]; // شهادات المؤتمرات (Multi)
+    arbitrationCerts?: StaffDocItem[]; // إفادات التحكيم (Multi)
+    communityServiceDocs?: StaffDocItem[]; // توثيق خدمة المجتمع (Multi)
+
+    publications?: { title: string, url: string, date: string }[]; // Legacy/Individual papers
     coursePortfolios?: CoursePortfolio[];
 }
 
+// --- بيانات الاتصال المشتركة ---
 export interface ContactInfo {
     email?: string;
     phone?: string;
@@ -113,23 +134,25 @@ export interface ContactInfo {
 export interface StaffMember extends ContactInfo {
   id: string;
   name: string;
-  rank: string; 
-  specialization: string; 
+  rank: string; // أستاذ، أستاذ مساعد...
+  specialization: string; // التخصص الدقيق
   imageUrl?: string;
-  username?: string; 
-  password?: string; 
+  username?: string; // Login Data
+  password?: string; // Login Data
+  
+  // New Fields
   subRole?: StaffSubRole;
   documents?: StaffDocuments;
 }
 
 export interface PGDates {
-  enrollment?: string; 
-  registration?: string; 
-  lastReport?: string; 
-  nextReportDue?: string; 
-  expectedDefense?: string; 
-  defenseDate?: string; 
-  grantingDate?: string; 
+  enrollment?: string; // تاريخ القيد
+  registration?: string; // تاريخ التسجيل (بدء العد)
+  lastReport?: string; // آخر تقرير صلاحية
+  nextReportDue?: string; // موعد التقرير القادم
+  expectedDefense?: string; // تاريخ انتهاء المدة القانونية
+  defenseDate?: string; // تاريخ المناقشة الفعلي
+  grantingDate?: string; // تاريخ المنح
 }
 
 export interface PGOtherDoc {
@@ -137,9 +160,9 @@ export interface PGOtherDoc {
     title: string;
     date: string;
     type: 'UPLOAD' | 'ARCHIVE_LINK';
-    url?: string; 
-    archiveId?: string; 
-    archiveSerial?: string; 
+    url?: string; // If UPLOAD
+    archiveId?: string; // If ARCHIVE_LINK
+    archiveSerial?: string; // For display
 }
 
 export interface PGDocuments {
@@ -158,14 +181,17 @@ export interface PGAlerts {
 export interface PostgraduateStudent extends ContactInfo {
   id: string;
   name: string;
-  degree: 'MSc' | 'PhD'; 
+  degree: 'MSc' | 'PhD'; // ماجستير أو دكتوراة
   researchTopic: string;
-  supervisor: string; 
-  coSupervisors?: string; 
-  status: 'Recording' | 'Researching' | 'Writing' | 'Defense' | 'Granted'; 
+  supervisor: string; // المشرف الرئيسي
+  coSupervisors?: string; // المشرفين المشاركين
+  status: 'Recording' | 'Researching' | 'Writing' | 'Defense' | 'Granted'; // التسجيل، البحث، الكتابة، المناقشة
+  
+  // Detailed Tracking
   dates: PGDates;
   documents: PGDocuments;
   alerts: PGAlerts;
+
   username?: string;
   password?: string;
 }
@@ -174,7 +200,7 @@ export interface UndergraduateStudent extends ContactInfo {
   id: string;
   name: string;
   year: 'Third' | 'Fourth';
-  section?: string; 
+  section?: string; // شعبة (أمراض نبات، عامة...)
   username?: string;
   password?: string;
 }
@@ -188,11 +214,12 @@ export interface AlumniMember extends ContactInfo {
   password?: string;
 }
 
+// واجهة الموظف الجديد
 export interface Employee extends ContactInfo {
   id: string;
   name: string;
-  jobTitle: string; 
-  department: string; 
+  jobTitle: string; // المسمى الوظيفي
+  department: string; // القسم/الإدارة (مثل: المعمل، السكرتارية، العمال)
   username?: string;
   password?: string;
 }
@@ -200,6 +227,7 @@ export interface Employee extends ContactInfo {
 export interface CourseMaterial {
   id: string;
   title: string;
+  // Updated year type to include PG levels
   year: 'Third' | 'Fourth' | 'Pre-Master' | 'Pre-PhD';
   description?: string;
   fileUrl: string;
@@ -207,6 +235,7 @@ export interface CourseMaterial {
   date: string;
 }
 
+// --- Schedules (Lectures & Exams) ---
 export type ScheduleType = 'LECTURE' | 'EXAM';
 
 export interface ScheduleItem {
@@ -214,7 +243,7 @@ export interface ScheduleItem {
     title: string;
     type: ScheduleType;
     year: 'Third' | 'Fourth' | 'Pre-Master' | 'Pre-PhD';
-    fileUrl: string; 
+    fileUrl: string; // Often an image
     uploadedBy: string;
     date: string;
 }
@@ -235,8 +264,10 @@ export interface JobOpportunity {
   description: string;
   datePosted: string;
   contactInfo: string;
-  status?: JobStatus; 
+  status?: JobStatus; // Added status field
 }
+
+// --- Inventory System Interfaces ---
 
 export type AssetStatus = 'WORKING' | 'MAINTENANCE' | 'BROKEN';
 
@@ -252,6 +283,7 @@ export interface Asset {
   createdAt: number;
 }
 
+// --- Lab Management & Scheduling ---
 export interface Lab {
     id: string;
     name: string;
@@ -268,8 +300,8 @@ export interface LabBooking {
     startTime: string;
     endTime: string;
     experimentType: string;
-    labName: string; 
-    status: BookingStatus; 
+    labName: string; // Default 'PG Lab'
+    status: BookingStatus; // Added Status
     createdAt: number;
 }
 
@@ -278,21 +310,22 @@ export interface LabClass {
     labId: string;
     courseName: string;
     instructor: string;
-    day: string; 
+    day: string; // e.g. "Sunday"
     startTime: string;
     endTime: string;
 }
 
+// --- Greenhouse Management ---
 export type PlotStatus = 'FREE' | 'OCCUPIED';
 
 export interface GreenhousePlot {
-    id: string; 
+    id: string; // "1", "2", etc.
     number: number;
     status: PlotStatus;
     researcher?: string;
     plantType?: string;
     startDate?: string;
-    notes?: string; 
+    notes?: string; // Worker instructions
 }
 
 export interface GreenhouseHistoryItem {
@@ -305,6 +338,7 @@ export interface GreenhouseHistoryItem {
     notes?: string;
 }
 
+// --- Department Events ---
 export type DeptEventType = 'WORKSHOP' | 'SEMINAR' | 'TRIP' | 'CONFERENCE' | 'COURSE';
 export type EventStatus = 'UPCOMING' | 'COMPLETED' | 'CANCELLED';
 
@@ -315,33 +349,33 @@ export interface DeptEvent {
     date: string;
     location: string;
     description: string;
-    regLink?: string; 
-    status: EventStatus; 
+    regLink?: string; // Registration link (Google Form)
+    status: EventStatus; // Added status
     createdAt: number;
 }
 
-// --- Department Formation ---
+// --- أنواع جديدة للهيكل الإداري (Department Formation) ---
 
 export interface OrgMember {
     name: string;
-    role: string; 
-    title?: string; 
+    role: string; // e.g. "رئيس اللجنة", "عضو", "أمين المجلس"
+    title?: string; // e.g. "أ.د", "د"
 }
 
 export interface DeptCouncilFormation {
     id: string;
-    academicYear: string; 
+    academicYear: string; // e.g. "2024-2025"
     members: OrgMember[];
 }
 
 export interface DeptCommitteeFormation {
     id: string;
-    name: string; 
+    name: string; // e.g. "لجنة المختبرات"
     academicYear: string;
     members: OrgMember[];
 }
 
-// --- Annual Report ---
+// --- Annual Report Interfaces ---
 
 export interface PublishedResearch {
     id: string;
@@ -357,40 +391,42 @@ export interface OngoingResearch {
     id: string;
     topic: string;
     stage: 'Data Collection' | 'Lab Experiments' | 'Writing' | 'Under Review';
-    progress: number; 
+    progress: number; // 0-100
     participants?: string;
 }
 
 export interface ScientificActivity {
     conferences: { name: string; role: string; date: string; location: string }[];
-    thesesJudged: number; 
-    supervisionCount: number; 
-    trainingCourses: string; 
+    thesesJudged: number; // تحكيم الرسائل
+    supervisionCount: number; // الإشراف الحالي
+    trainingCourses: string; // الدورات التدريبية
 }
 
 export interface CommunityActivity {
-    books: string; 
-    convoys: string; 
-    media: string; 
-    memberships: string; 
+    books: string; // المؤلفات والكتب
+    convoys: string; // القوافل
+    media: string; // الإعلام
+    memberships: string; // الجمعيات
 }
 
 export type ReportStatus = 'DRAFT' | 'SUBMITTED';
 
 export interface AnnualReport {
     id: string;
-    userId: string; 
+    userId: string; // ربط التقرير بالعضو
     userName: string;
-    academicYear: string; 
+    academicYear: string; // "2024-2025"
     status: ReportStatus;
     submissionDate?: string;
+    
+    // Data Tabs
     publishedResearch: PublishedResearch[];
     ongoingResearch: OngoingResearch[];
     scientificActivity: ScientificActivity;
     communityActivity: CommunityActivity;
 }
 
-// --- Research Plan ---
+// --- Research Plan Interfaces ---
 
 export type TopicStatus = 'AVAILABLE' | 'IN_PROGRESS' | 'COMPLETED';
 export type ProposalStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'MODIFICATION_REQUESTED';
@@ -398,25 +434,25 @@ export type ProposalStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'MODIFICATION
 export interface ResearchTopic {
     id: string;
     title: string;
-    goal: string; 
+    goal: string; // الهدف التطبيقي
     status: TopicStatus;
-    studentName?: string; 
-    completionDate?: string; 
+    studentName?: string; // اسم الطالب (اختياري)
+    completionDate?: string; // تاريخ المناقشة
 }
 
 export interface ResearchAxis {
     id: string;
     title: string;
     description: string;
-    coordinator: string; 
+    coordinator: string; // منسق المحور
     topics: ResearchTopic[];
 }
 
 export interface ResearchPlan {
     id: string;
-    title: string; 
+    title: string; // الخطة الخمسية 2025-2030
     vision: string;
-    strategicGoals: string[]; 
+    strategicGoals: string[]; // e.g. Egypt 2030, Climate Change
     startDate: string;
     endDate: string;
     status: 'ACTIVE' | 'ARCHIVED';
@@ -426,13 +462,14 @@ export interface ResearchPlan {
 export interface ResearchProposal {
     id: string;
     title: string;
-    axisId: string; 
+    axisId: string; // المحور التابع له
+    newAxisName?: string; // اسم المحور الجديد المقترح
     type: 'MSc' | 'PhD';
-    justification: string; 
-    appliedGoal: string; 
-    proposedBy: string; 
+    justification: string; // المبررات
+    appliedGoal: string; // الهدف التطبيقي
+    proposedBy: string; // اسم العضو
     proposedById: string;
-    studentName?: string; 
+    studentName?: string; // الطالب المرشح
     status: ProposalStatus;
     adminNotes?: string;
     createdAt: number;
@@ -481,49 +518,62 @@ export interface LeaveRequest {
 export type CareerMovementType = 'LOAN' | 'SECONDMENT' | 'TRANSFER';
 
 export type CareerRequestStatus = 
-  | 'PENDING_DEPT'     
-  | 'PENDING_COLLEGE'  
-  | 'PENDING_UNIV'     
-  | 'APPROVED'         
-  | 'REJECTED';        
+  | 'PENDING_DEPT'     // معروض على مجلس القسم
+  | 'PENDING_COLLEGE'  // معروض على مجلس الكلية
+  | 'PENDING_UNIV'     // معروض على مجلس الجامعة
+  | 'APPROVED'         // تم صدور القرار التنفيذي
+  | 'REJECTED';        // مرفوض
 
+// 1. Loan (الإعارة)
 export interface LoanRequest {
     id: string;
     userId: string;
     userName: string;
     type: 'LOAN';
-    loanType: 'INTERNAL' | 'EXTERNAL'; 
+    loanType: 'INTERNAL' | 'EXTERNAL'; // إعارة داخلية / خارجية
     country: string;
-    institution: string; 
-    college: string; 
+    institution: string; // الجامعة / المؤسسة
+    college: string; // الكلية / القسم
     startDate: string;
     endDate: string;
-    requestType: 'NEW' | 'RENEWAL'; 
-    insurancePaymentDocUrl?: string; 
+    requestType: 'NEW' | 'RENEWAL'; // لأول مرة / تجديد
+    
+    // Financial
+    insurancePaymentDocUrl?: string; // إيصال سداد التأمينات (شرط للتجديد)
     salaryCurrency: string;
-    nominationLetterUrl?: string; 
-    prevYearReportUrl?: string; 
+    
+    // Docs
+    nominationLetterUrl?: string; // خطاب الترشيح
+    prevYearReportUrl?: string; // تقرير إنجاز (للتجديد)
+    
     status: CareerRequestStatus;
     createdAt: number;
     notes?: string;
 }
 
+// 2. Secondment (الندب)
 export interface SecondmentRequest {
     id: string;
     userId: string;
     userName: string;
     type: 'SECONDMENT';
-    secondmentType: 'FULL_TIME' | 'PART_TIME' | 'OFF_HOURS'; 
-    secondmentDays?: string[]; 
-    targetInstitution: string; 
+    secondmentType: 'FULL_TIME' | 'PART_TIME' | 'OFF_HOURS'; // كلي / جزئي / غير أوقات العمل
+    
+    // For Part-time
+    secondmentDays?: string[]; // أيام الندب
+    
+    targetInstitution: string; // الجهة المنتدب إليها
     targetCollege?: string;
+    
     startDate: string;
     endDate: string;
+    
     status: CareerRequestStatus;
     createdAt: number;
     notes?: string;
 }
 
+// 3. Transfer (النقل)
 export interface TransferRequest {
     id: string;
     userId: string;
@@ -532,14 +582,19 @@ export interface TransferRequest {
     targetUniversity: string;
     targetCollege: string;
     targetDepartment: string;
-    transferType: 'VACANT_DEGREE' | 'WITH_DEGREE'; 
-    targetApprovalUrl?: string; 
-    currentApprovalUrl?: string; 
+    
+    transferType: 'VACANT_DEGREE' | 'WITH_DEGREE'; // درجة شاغرة / نقل بالدرجة
+    
+    // Docs
+    targetApprovalUrl?: string; // موافقة الجامعة المستقبلة
+    currentApprovalUrl?: string; // موافقة الجامعة الحالية
+    
     status: CareerRequestStatus;
     createdAt: number;
     notes?: string;
 }
 
+// Union Type for easy handling
 export type CareerMovementRequest = LoanRequest | SecondmentRequest | TransferRequest;
 
 // --- Scientific Repository Types (المستودع الرقمي) ---
@@ -612,8 +667,9 @@ export interface DashboardStats {
   totalCommittees: number;
   todayCount: number;
   unansweredCount: number;
+  // Portal Stats
   totalStaff: number;
   totalStudentsPG: number;
   totalAlumni: number;
-  totalEmployees: number;
+  totalEmployees: number; // إحصائية جديدة للموظفين
 }
