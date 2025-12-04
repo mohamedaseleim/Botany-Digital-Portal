@@ -7,7 +7,7 @@ import {
 import { User as UserType, LeaveRequest, LeaveType, StaffMember, UserRole } from '../types';
 import { 
     addLeaveRequest, getMyLeaves, getSubstituteRequests, respondToSubstituteRequest, 
-    getStaff, uploadFileToDrive, logActivity 
+    getStaff, uploadFileToDrive, logActivity, getAllLeaves, getEmployees 
 } from '../services/dbService';
 import { db } from '../firebaseConfig';
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
@@ -17,12 +17,15 @@ interface LeaveManagementProps {
 }
 
 export const LeaveManagement: React.FC<LeaveManagementProps> = ({ user }) => {
-    const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'NEW' | 'HISTORY' | 'SUBSTITUTE'>('DASHBOARD');
+    const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'NEW' | 'HISTORY' | 'SUBSTITUTE' | 'ALL_REQUESTS'>('DASHBOARD');
     const [myLeaves, setMyLeaves] = useState<LeaveRequest[]>([]);
     const [subRequests, setSubRequests] = useState<LeaveRequest[]>([]);
-    const [staffList, setStaffList] = useState<StaffMember[]>([]);
+    const [allLeaves, setAllLeaves] = useState<LeaveRequest[]>([]); // للمدير
+    const [staffList, setStaffList] = useState<{id: string, name: string, role: string}[]>([]);
     const [loading, setLoading] = useState(true);
     
+    const isAdmin = user.role === UserRole.ADMIN;
+
     // Form State
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -56,19 +59,31 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({ user }) => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            // جلب البيانات بالتوازي
-            const [leaves, subs, allStaff] = await Promise.all([
+            // جلب البيانات الأساسية
+            const [leaves, subs, staff, employees] = await Promise.all([
                 getMyLeaves(user.id),
                 getSubstituteRequests(user.id),
-                getStaff()
+                getStaff(),
+                getEmployees()
             ]);
             
             setMyLeaves(leaves);
             setSubRequests(subs);
             
-            // تصفية القائمة لاستبعاد المستخدم الحالي (لا يمكن أن يكون بديلاً لنفسه)
-            const otherStaff = allStaff.filter(s => s.id !== user.id);
-            setStaffList(otherStaff);
+            // دمج الموظفين وأعضاء التدريس في قائمة البدلاء
+            // استثناء المستخدم الحالي من القائمة
+            const allPotentialSubstitutes = [
+                ...staff.map(s => ({ id: s.id, name: s.name, role: s.rank || 'عضو هيئة تدريس' })),
+                ...employees.map(e => ({ id: e.id, name: e.name, role: e.jobTitle || 'موظف' }))
+            ].filter(p => p.id !== user.id);
+
+            setStaffList(allPotentialSubstitutes);
+
+            // إذا كان مديراً، اجلب كل الإجازات
+            if (isAdmin) {
+                const all = await getAllLeaves();
+                setAllLeaves(all);
+            }
 
         } catch (error) {
             console.error("Error fetching data:", error);
@@ -152,7 +167,6 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({ user }) => {
         const days = calculateDays();
         if (days <= 0) { alert('تاريخ النهاية يجب أن يكون بعد البداية'); return; }
         
-        // Validation for Casual Leave
         if (formData.type === 'CASUAL' && !isEditing) {
             const usedCasual = myLeaves.filter(l => l.type === 'CASUAL' && l.status === 'APPROVED').reduce((acc, curr) => acc + curr.daysCount, 0);
             if (usedCasual + days > 7) {
@@ -163,7 +177,6 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({ user }) => {
 
         setSubmitting(true);
         try {
-            // Upload files if any
             const uploadedUrls = [];
             for (const file of files) {
                 const url = await uploadFileToDrive(file);
@@ -182,7 +195,6 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({ user }) => {
                 substituteId: formData.substituteId,
                 substituteName: substituteName,
                 
-                // Optional fields
                 address: formData.address,
                 phone: formData.phone,
                 hospital: formData.hospital,
@@ -191,7 +203,6 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({ user }) => {
                 spouseName: formData.spouseName,
                 spouseJob: formData.spouseJob,
                 country: formData.country,
-                // Only update docs if new ones uploaded
                 ...(uploadedUrls.length > 0 && { documentsUrls: uploadedUrls, medicalReportUrl: uploadedUrls[0] })
             };
 
@@ -228,12 +239,23 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({ user }) => {
             alert('حدث خطأ');
         }
     };
+    
+    // Admin Action: Approve/Reject as Head of Dept
+    const handleAdminAction = async (reqId: string, status: 'APPROVED' | 'REJECTED') => {
+        if(!window.confirm(`هل أنت متأكد من ${status === 'APPROVED' ? 'اعتماد' : 'رفض'} هذا الطلب؟`)) return;
+        try {
+            await updateDoc(doc(db, 'leave_requests', reqId), { status });
+            await logActivity('قرار إجازة', user.name, `تم ${status === 'APPROVED' ? 'اعتماد' : 'رفض'} طلب إجازة`);
+            fetchData();
+        } catch (e) { alert("خطأ"); }
+    };
 
     // --- Components ---
 
     const renderDashboard = () => {
         const casualUsed = myLeaves.filter(l => l.type === 'CASUAL' && l.status === 'APPROVED').reduce((acc, l) => acc + l.daysCount, 0);
         const pendingCount = myLeaves.filter(l => l.status.includes('PENDING')).length;
+        const pendingAdminCount = isAdmin ? allLeaves.filter(l => l.status === 'PENDING_HEAD').length : 0;
 
         return (
             <div className="space-y-6 animate-in fade-in">
@@ -276,6 +298,22 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({ user }) => {
                         </div>
                         <p className="text-xs text-purple-500 mt-4">زملاء بانتظار موافقتك للقيام بعملهم</p>
                     </div>
+                    
+                    {/* Admin Card */}
+                    {isAdmin && (
+                        <div className="bg-green-50 p-6 rounded-xl border border-green-100 cursor-pointer hover:bg-green-100 transition-colors md:col-span-3" onClick={() => setActiveTab('ALL_REQUESTS')}>
+                            <div className="flex justify-between items-center">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-green-200 rounded-full"><CheckCircle2 className="w-6 h-6 text-green-700"/></div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-green-900">لوحة المدير (موافقة رئيس القسم)</h3>
+                                        <p className="text-sm text-green-700">يوجد {pendingAdminCount} طلب بانتظار الاعتماد النهائي</p>
+                                    </div>
+                                </div>
+                                <button className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold">مراجعة الطلبات</button>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* New Request Button */}
@@ -345,17 +383,18 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({ user }) => {
                         required={formData.type !== 'CHILD_CARE' && formData.type !== 'SPOUSE'}
                     >
                         <option value="">-- اختر الزميل --</option>
-                        {/* عرض رسالة إذا كانت القائمة فارغة */}
                         {staffList.length === 0 ? (
-                             <option disabled>لا يوجد زملاء مسجلين حالياً</option>
+                             <option disabled>لا يوجد زملاء مسجلين حالياً (تواصل مع المسؤول)</option>
                         ) : (
-                             staffList.map(s => <option key={s.id} value={s.id}>{s.name} ({s.rank})</option>)
+                             staffList.map(s => <option key={s.id} value={s.id}>{s.name} - {s.role}</option>)
                         )}
                     </select>
-                    <p className="text-xs text-purple-600 mt-2 flex justify-between">
-                        <span>* سيتم إرسال إشعار للزميل للموافقة على تغطية محاضراتك.</span>
-                        {staffList.length === 0 && <span className="text-red-500 font-bold">تنبيه: يجب إضافة أعضاء هيئة تدريس آخرين من لوحة التحكم أولاً.</span>}
-                    </p>
+                    {staffList.length === 0 && (
+                        <p className="text-xs text-red-500 font-bold mt-1">
+                            تنبيه: القائمة فارغة لأنك المستخدم الوحيد المسجل. يرجى إضافة مستخدمين آخرين من لوحة "إدارة المستخدمين" لتجربة ميزة البديل.
+                        </p>
+                    )}
+                    <p className="text-xs text-purple-600 mt-2">* سيتم إرسال إشعار للزميل للموافقة على تغطية محاضراتك.</p>
                 </div>
 
                 {/* Dynamic Fields */}
@@ -478,35 +517,10 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({ user }) => {
                         </div>
                         
                         <div className="p-6 space-y-6">
-                            {/* Mock Schedule */}
-                            <div className="bg-gray-50 rounded-lg border border-gray-200 p-4">
-                                <h4 className="font-bold text-gray-700 mb-3 flex items-center gap-2"><CalendarDays className="w-4 h-4"/> الأعباء التدريسية المطلوب تغطيتها</h4>
-                                <table className="w-full text-sm text-right">
-                                    <thead className="text-gray-500 border-b">
-                                        <tr>
-                                            <th className="pb-2">اليوم</th>
-                                            <th className="pb-2">الساعة</th>
-                                            <th className="pb-2">المقرر</th>
-                                            <th className="pb-2">المكان</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="font-medium text-gray-800">
-                                        {/* Mock Data */}
-                                        <tr><td className="py-2">الأحد</td><td>10:00 - 12:00</td><td>فطريات (نظري)</td><td>مدرج أ</td></tr>
-                                        <tr><td className="py-2">الاثنين</td><td>02:00 - 04:00</td><td>أمراض (عملي)</td><td>معمل 3</td></tr>
-                                    </tbody>
-                                </table>
-                                <div className="mt-3 bg-yellow-50 text-yellow-800 text-xs p-2 rounded border border-yellow-100">
-                                    ⚠️ يرجى التأكد من عدم تعارض هذه المواعيد مع جدولك الخاص.
-                                </div>
-                            </div>
-
-                            {/* Declaration */}
                             <div className="bg-gray-100 p-4 rounded-lg text-sm text-gray-700 leading-relaxed border-r-4 border-gray-400">
                                 "أقر أنا / <strong>{user.name}</strong>، بصفتي عضو هيئة تدريس بالقسم، بأنني اطلعت على الجدول أعلاه، وأوافق على القيام بالأعباء التدريسية الخاصة بالزميل/ <strong>{selectedSubRequest.userName}</strong> خلال فترة إجازته، وأتحمل مسؤولية تدريسها."
                             </div>
 
-                            {/* Actions */}
                             {!subAction ? (
                                 <div className="flex gap-3 pt-2">
                                     <button onClick={() => setSubAction('DECLINE')} className="flex-1 py-3 border-2 border-red-100 text-red-600 rounded-xl font-bold hover:bg-red-50">اعتذار</button>
@@ -573,29 +587,14 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({ user }) => {
                                     </span>
                                 </td>
                                 <td className="p-4 flex gap-2">
-                                    {/* زر التعديل يظهر فقط للطلبات غير المعتمدة */}
                                     {(leave.status === 'PENDING_SUBSTITUTE' || leave.status === 'PENDING_HEAD') && (
                                         <>
-                                            <button 
-                                                onClick={() => handleEditRequest(leave)} 
-                                                className="text-blue-600 hover:bg-blue-50 p-1.5 rounded"
-                                                title="تعديل الطلب"
-                                            >
-                                                <Edit className="w-4 h-4"/>
-                                            </button>
-                                            <button 
-                                                onClick={() => handleDeleteRequest(leave.id, leave.type)} 
-                                                className="text-red-600 hover:bg-red-50 p-1.5 rounded"
-                                                title="حذف الطلب"
-                                            >
-                                                <Trash2 className="w-4 h-4"/>
-                                            </button>
+                                            <button onClick={() => handleEditRequest(leave)} className="text-blue-600 hover:bg-blue-50 p-1.5 rounded"><Edit className="w-4 h-4"/></button>
+                                            <button onClick={() => handleDeleteRequest(leave.id, leave.type)} className="text-red-600 hover:bg-red-50 p-1.5 rounded"><Trash2 className="w-4 h-4"/></button>
                                         </>
                                     )}
                                     {leave.status === 'APPROVED' && (
-                                        <button onClick={() => window.print()} className="text-green-600 hover:underline flex items-center gap-1">
-                                            <FileText className="w-3 h-3"/> طباعة
-                                        </button>
+                                        <button onClick={() => window.print()} className="text-green-600 hover:underline flex items-center gap-1"><FileText className="w-3 h-3"/> طباعة</button>
                                     )}
                                 </td>
                             </tr>
@@ -603,6 +602,46 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({ user }) => {
                         {myLeaves.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-gray-400">لا يوجد سجل إجازات</td></tr>}
                     </tbody>
                 </table>
+            </div>
+        </div>
+    );
+
+    // --- Admin: All Requests View ---
+    const renderAllRequests = () => (
+        <div className="space-y-4 animate-in fade-in">
+            <h3 className="font-bold text-gray-700 mb-4">جميع طلبات الإجازات (للمدير)</h3>
+            <div className="grid gap-4">
+                {allLeaves.map(req => (
+                    <div key={req.id} className="bg-white border border-gray-200 shadow-sm rounded-xl p-4 flex flex-col md:flex-row justify-between gap-4">
+                        <div>
+                            <div className="flex items-center gap-2 mb-1">
+                                <h4 className="font-bold text-lg">{req.userName}</h4>
+                                <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs">{getLeaveLabel(req.type)}</span>
+                            </div>
+                            <p className="text-sm text-gray-500">
+                                المدة: {req.daysCount} أيام ({req.startDate} - {req.endDate}) <br/>
+                                البديل: {req.substituteName || 'لا يوجد'}
+                            </p>
+                            <div className="mt-2">
+                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                                    req.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
+                                    req.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                                    req.status === 'PENDING_HEAD' ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-gray-100 text-gray-600'
+                                }`}>
+                                    {req.status === 'PENDING_HEAD' ? 'بانتظار موافقتك' : 
+                                     req.status === 'PENDING_SUBSTITUTE' ? 'بانتظار البديل' : req.status}
+                                </span>
+                            </div>
+                        </div>
+                        {req.status === 'PENDING_HEAD' && (
+                            <div className="flex gap-2 items-center">
+                                <button onClick={() => handleAdminAction(req.id, 'APPROVED')} className="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700">اعتماد</button>
+                                <button onClick={() => handleAdminAction(req.id, 'REJECTED')} className="bg-red-600 text-white px-4 py-2 rounded font-bold hover:bg-red-700">رفض</button>
+                            </div>
+                        )}
+                    </div>
+                ))}
             </div>
         </div>
     );
@@ -615,14 +654,12 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({ user }) => {
                 </h1>
             </div>
 
-            {/* Main Navigation */}
             <div className="flex border-b border-gray-200 bg-white rounded-t-xl overflow-x-auto">
-                <button onClick={() => setActiveTab('DASHBOARD')} className={`px-6 py-4 font-bold text-sm transition-colors ${activeTab === 'DASHBOARD' ? 'text-green-700 border-b-2 border-green-700 bg-green-50' : 'text-gray-500 hover:text-green-600'}`}>لوحة المعلومات</button>
-                <button onClick={handleInitForm} className={`px-6 py-4 font-bold text-sm transition-colors ${activeTab === 'NEW' ? 'text-green-700 border-b-2 border-green-700 bg-green-50' : 'text-gray-500 hover:text-green-600'}`}>تقديم طلب</button>
-                <button onClick={() => setActiveTab('SUBSTITUTE')} className={`px-6 py-4 font-bold text-sm transition-colors flex items-center gap-2 ${activeTab === 'SUBSTITUTE' ? 'text-purple-700 border-b-2 border-purple-700 bg-purple-50' : 'text-gray-500 hover:text-purple-600'}`}>
-                    طلبات البديل {subRequests.length > 0 && <span className="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">{subRequests.length}</span>}
-                </button>
-                <button onClick={() => setActiveTab('HISTORY')} className={`px-6 py-4 font-bold text-sm transition-colors ${activeTab === 'HISTORY' ? 'text-green-700 border-b-2 border-green-700 bg-green-50' : 'text-gray-500 hover:text-green-600'}`}>السجل والأرشيف</button>
+                <button onClick={() => setActiveTab('DASHBOARD')} className={`px-6 py-4 font-bold text-sm transition-colors ${activeTab === 'DASHBOARD' ? 'text-green-700 border-b-2 border-green-700' : 'text-gray-500'}`}>لوحة المعلومات</button>
+                <button onClick={handleInitForm} className={`px-6 py-4 font-bold text-sm transition-colors ${activeTab === 'NEW' ? 'text-green-700 border-b-2 border-green-700' : 'text-gray-500'}`}>تقديم طلب</button>
+                <button onClick={() => setActiveTab('SUBSTITUTE')} className={`px-6 py-4 font-bold text-sm transition-colors ${activeTab === 'SUBSTITUTE' ? 'text-purple-700 border-b-2 border-purple-700' : 'text-gray-500'}`}>طلبات البديل</button>
+                <button onClick={() => setActiveTab('HISTORY')} className={`px-6 py-4 font-bold text-sm transition-colors ${activeTab === 'HISTORY' ? 'text-green-700 border-b-2 border-green-700' : 'text-gray-500'}`}>سجلي</button>
+                {isAdmin && <button onClick={() => setActiveTab('ALL_REQUESTS')} className={`px-6 py-4 font-bold text-sm transition-colors ${activeTab === 'ALL_REQUESTS' ? 'text-green-700 border-b-2 border-green-700' : 'text-gray-500'}`}>كل الطلبات (مدير)</button>}
             </div>
 
             <div className="bg-white p-6 rounded-b-xl shadow-sm border border-t-0 border-gray-200 min-h-[400px]">
@@ -630,6 +667,7 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({ user }) => {
                 {activeTab === 'NEW' && renderNewRequestForm()}
                 {activeTab === 'SUBSTITUTE' && renderSubstituteRequests()}
                 {activeTab === 'HISTORY' && renderHistory()}
+                {activeTab === 'ALL_REQUESTS' && isAdmin && renderAllRequests()}
             </div>
         </div>
     );
