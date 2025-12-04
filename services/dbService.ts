@@ -21,7 +21,8 @@ import {
   UserRole, Asset, Announcement, ScheduleItem, LabBooking, Lab, LabClass, 
   GreenhousePlot, GreenhouseHistoryItem, DeptEvent, ActivityLogItem, Employee,
   DeptCouncilFormation, DeptCommitteeFormation, AnnualReport, ResearchPlan, ResearchProposal,
-  LeaveRequest, LeaveStatus, CareerMovementRequest, LoanRequest
+  LeaveRequest, LeaveStatus, CareerMovementRequest, LoanRequest,
+  RepositoryItem, RepositoryRequest // استيراد الأنواع الجديدة
 } from '../types';
 
 // --- GOOGLE DRIVE UPLOAD SERVICE ---
@@ -679,7 +680,7 @@ export const getAllLeaves = async (): Promise<LeaveRequest[]> => {
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LeaveRequest));
 };
 
-// --- CAREER MOVEMENT Operations (NEW) ---
+// --- CAREER MOVEMENT Operations (N, S, L) ---
 
 export const addCareerRequest = async (request: Omit<CareerMovementRequest, 'id' | 'createdAt'>): Promise<void> => {
     await addDoc(collection(db, 'career_requests'), {
@@ -706,7 +707,6 @@ export const updateCareerRequestStatus = async (id: string, status: string) => {
 };
 
 export const calculateLoanDuration = async (userId: string): Promise<number> => {
-    // This is a simplified logic. In a real scenario, fetch approved LOAN requests and sum durations.
     const q = query(collection(db, 'career_requests'), 
         where('userId', '==', userId), 
         where('type', '==', 'LOAN'),
@@ -718,11 +718,65 @@ export const calculateLoanDuration = async (userId: string): Promise<number> => 
         const data = doc.data() as LoanRequest;
         const start = new Date(data.startDate).getFullYear();
         const end = new Date(data.endDate).getFullYear();
-        totalYears += (end - start) + 1; // Approximation
+        totalYears += (end - start) + 1; 
     });
     return totalYears; 
 };
 
+// --- SCIENTIFIC REPOSITORY Operations ---
+
+export const getRepositoryItems = async (): Promise<RepositoryItem[]> => {
+    const q = query(collection(db, 'repository_items'), orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RepositoryItem));
+};
+
+export const addRepositoryItem = async (item: Omit<RepositoryItem, 'id' | 'createdAt'>): Promise<void> => {
+    await addDoc(collection(db, 'repository_items'), {
+        ...item,
+        createdAt: Date.now()
+    });
+};
+
+// طلب نسخة كاملة
+export const requestFullText = async (request: Omit<RepositoryRequest, 'id' | 'createdAt' | 'status'>): Promise<void> => {
+    await addDoc(collection(db, 'repository_requests'), {
+        ...request,
+        status: 'PENDING',
+        createdAt: Date.now()
+    });
+};
+
+// جلب الطلبات الواردة لعضو معين (للموافقة عليها)
+export const getMyRepoRequests = async (userId: string): Promise<RepositoryRequest[]> => {
+    const q = query(
+        collection(db, 'repository_requests'), 
+        where('itemAuthorId', '==', userId),
+        where('status', '==', 'PENDING')
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RepositoryRequest));
+};
+
+// الرد على الطلب
+export const respondToRepoRequest = async (requestId: string, status: 'APPROVED' | 'REJECTED') => {
+    await updateDoc(doc(db, 'repository_requests', requestId), { 
+        status,
+        responseDate: new Date().toISOString()
+    });
+};
+
+// إحصائيات المستودع
+export const getRepoStats = async () => {
+    const snapshot = await getDocs(collection(db, 'repository_items'));
+    const items = snapshot.docs.map(d => d.data() as RepositoryItem);
+    return {
+        totalItems: items.length,
+        theses: items.filter(i => i.type.includes('THESIS')).length,
+        papers: items.filter(i => i.type.includes('PAPER')).length,
+        books: items.filter(i => i.type === 'BOOK').length
+    };
+};
 
 // --- Helper: Seed Research Plan ---
 export const seedResearchPlan = async () => {

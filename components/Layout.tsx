@@ -25,7 +25,8 @@ import {
   FileText,
   Target,
   CalendarDays,
-  Plane // استيراد أيقونة النقل والندب والإعارة
+  Plane,
+  Library
 } from 'lucide-react';
 import { User, UserRole } from '../types';
 
@@ -41,7 +42,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
 
   const isActive = (path: string) => location.pathname === path;
 
-  // قائمة الروابط الكاملة بالترتيب المطلوب
+  // قائمة الروابط بالترتيب الجديد المطلوب
   const allNavItems = [
     { 
       path: '/', 
@@ -98,6 +99,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
         roles: [UserRole.ADMIN, UserRole.STAFF] 
     },
     { 
+      path: '/repository', 
+      label: 'المستودع الرقمي للإنتاج العلمي', 
+      icon: Library, 
+      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.STUDENT_PG, UserRole.STUDENT_UG, UserRole.ALUMNI, UserRole.EMPLOYEE] 
+    },
+    { 
       path: '/inventory', 
       label: 'سجل العهدة', 
       icon: Microscope, 
@@ -133,14 +140,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       icon: CalendarDays, 
       roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.EMPLOYEE] 
     },
-    // --- رابط النقل والندب والإعارة (جديد) ---
     { 
       path: '/career-movements', 
       label: 'إدارة النقل والندب والإعارة', 
       icon: Plane, 
       roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.EMPLOYEE] 
     },
-    // ---------------------------------------
     { 
       path: '/students', 
       label: 'بوابة الطلاب', 

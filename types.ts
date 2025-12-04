@@ -476,67 +476,54 @@ export interface LeaveRequest {
   adminNotes?: string;
 }
 
-// --- Career Movements (النقل والندب والإعارة) - NEW ---
+// --- Career Movements (النقل والندب والإعارة) ---
 
 export type CareerMovementType = 'LOAN' | 'SECONDMENT' | 'TRANSFER';
 
 export type CareerRequestStatus = 
-  | 'PENDING_DEPT'     // معروض على مجلس القسم
-  | 'PENDING_COLLEGE'  // معروض على مجلس الكلية
-  | 'PENDING_UNIV'     // معروض على مجلس الجامعة
-  | 'APPROVED'         // تم صدور القرار التنفيذي
-  | 'REJECTED';        // مرفوض
+  | 'PENDING_DEPT'     
+  | 'PENDING_COLLEGE'  
+  | 'PENDING_UNIV'     
+  | 'APPROVED'         
+  | 'REJECTED';        
 
-// 1. Loan (الإعارة)
 export interface LoanRequest {
     id: string;
     userId: string;
     userName: string;
     type: 'LOAN';
-    loanType: 'INTERNAL' | 'EXTERNAL'; // إعارة داخلية / خارجية
+    loanType: 'INTERNAL' | 'EXTERNAL'; 
     country: string;
-    institution: string; // الجامعة / المؤسسة
-    college: string; // الكلية / القسم
+    institution: string; 
+    college: string; 
     startDate: string;
     endDate: string;
-    requestType: 'NEW' | 'RENEWAL'; // لأول مرة / تجديد
-    
-    // Financial
-    insurancePaymentDocUrl?: string; // إيصال سداد التأمينات (شرط للتجديد)
+    requestType: 'NEW' | 'RENEWAL'; 
+    insurancePaymentDocUrl?: string; 
     salaryCurrency: string;
-    
-    // Docs
-    nominationLetterUrl?: string; // خطاب الترشيح
-    prevYearReportUrl?: string; // تقرير إنجاز (للتجديد)
-    
+    nominationLetterUrl?: string; 
+    prevYearReportUrl?: string; 
     status: CareerRequestStatus;
     createdAt: number;
     notes?: string;
 }
 
-// 2. Secondment (الندب)
 export interface SecondmentRequest {
     id: string;
     userId: string;
     userName: string;
     type: 'SECONDMENT';
-    secondmentType: 'FULL_TIME' | 'PART_TIME' | 'OFF_HOURS'; // كلي / جزئي / غير أوقات العمل
-    
-    // For Part-time
-    secondmentDays?: string[]; // أيام الندب
-    
-    targetInstitution: string; // الجهة المنتدب إليها
+    secondmentType: 'FULL_TIME' | 'PART_TIME' | 'OFF_HOURS'; 
+    secondmentDays?: string[]; 
+    targetInstitution: string; 
     targetCollege?: string;
-    
     startDate: string;
     endDate: string;
-    
     status: CareerRequestStatus;
     createdAt: number;
     notes?: string;
 }
 
-// 3. Transfer (النقل)
 export interface TransferRequest {
     id: string;
     userId: string;
@@ -545,20 +532,78 @@ export interface TransferRequest {
     targetUniversity: string;
     targetCollege: string;
     targetDepartment: string;
-    
-    transferType: 'VACANT_DEGREE' | 'WITH_DEGREE'; // درجة شاغرة / نقل بالدرجة
-    
-    // Docs
-    targetApprovalUrl?: string; // موافقة الجامعة المستقبلة
-    currentApprovalUrl?: string; // موافقة الجامعة الحالية
-    
+    transferType: 'VACANT_DEGREE' | 'WITH_DEGREE'; 
+    targetApprovalUrl?: string; 
+    currentApprovalUrl?: string; 
     status: CareerRequestStatus;
     createdAt: number;
     notes?: string;
 }
 
-// Union Type for easy handling
 export type CareerMovementRequest = LoanRequest | SecondmentRequest | TransferRequest;
+
+// --- Scientific Repository Types (المستودع الرقمي) ---
+
+export type RepositoryItemType = 'THESIS_MASTER' | 'THESIS_PHD' | 'JOURNAL_PAPER' | 'CONF_PAPER' | 'BOOK';
+
+export interface RepositoryItem {
+    id: string;
+    type: RepositoryItemType;
+    titleAr: string;
+    titleEn?: string;
+    abstract?: string;
+    keywords?: string[];
+    publicationYear: string;
+    specialization?: string; // التخصص الدقيق
+    
+    // Authors / Supervisors
+    authorIds?: string[]; // ربط مع أعضاء القسم
+    authorNames?: string; // نصي (للمشاركين من خارج القسم)
+    supervisors?: string; // للرسائل
+
+    // Publication Info
+    journalName?: string;
+    conferenceName?: string;
+    volume?: string;
+    issue?: string;
+    pages?: string;
+    doi?: string;
+    isbn?: string;
+    publisher?: string;
+    
+    // Thesis Info
+    degree?: string;
+    grantDate?: string;
+    shelfLocation?: string; // مكان النسخة الورقية
+
+    // Files & Visibility
+    coverUrl?: string; // للكتب
+    fileUrl?: string; // الملف العام (ملخص أو كامل)
+    privateFileUrl?: string; // الملف الكامل (للمؤلف والإدارة فقط)
+    fileVisibility: 'PUBLIC' | 'PRIVATE' | 'AUTHOR_ONLY';
+    
+    createdAt: number;
+    addedBy: string;
+}
+
+export type RequestReason = 'RESEARCH' | 'CITATION' | 'OTHER';
+export type RequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface RepositoryRequest {
+    id: string;
+    itemId: string;
+    itemTitle: string;
+    itemAuthorId: string; // العضو المسؤول عن الموافقة
+    
+    requesterName: string;
+    requesterEmail: string;
+    reason: RequestReason;
+    message?: string;
+    
+    status: RequestStatus;
+    responseDate?: string;
+    createdAt: number;
+}
 
 export interface DashboardStats {
   totalIncoming: number;
