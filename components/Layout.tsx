@@ -26,7 +26,8 @@ import {
   Target,
   CalendarDays,
   Plane,
-  Library
+  Library,
+  Layers // أيقونة مركز النماذج
 } from 'lucide-react';
 import { User, UserRole } from '../types';
 
@@ -42,163 +43,148 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
 
   const isActive = (path: string) => location.pathname === path;
 
-  // قائمة الروابط مرتبة حسب الطلب
+  // قائمة الروابط الكاملة
   const allNavItems = [
-    // 1. لوحة القيادة
     { 
       path: '/', 
       label: 'لوحة القيادة', 
       icon: LayoutDashboard, 
       roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.DATA_ENTRY, UserRole.EMPLOYEE] 
     },
-    // 2. الصادر
     { 
       path: '/outgoing', 
       label: 'الصادر', 
       icon: FileOutput, 
       roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.DATA_ENTRY] 
     },
-    // 3. الوارد
     { 
       path: '/incoming', 
       label: 'الوارد', 
       icon: FileInput, 
       roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.DATA_ENTRY] 
     },
-    // 4. مجالس القسم
+    // --- رابط مركز النماذج والمكاتبات (جديد) ---
+    { 
+      path: '/forms', 
+      label: 'مركز النماذج والمكاتبات', 
+      icon: Layers, 
+      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.DATA_ENTRY, UserRole.EMPLOYEE] 
+    },
+    // ------------------------------------------
     { 
       path: '/councils', 
       label: 'مجالس القسم', 
       icon: Users, 
       roles: [UserRole.ADMIN, UserRole.STAFF] 
     },
-    // 5. لجان القسم
     { 
       path: '/committees', 
       label: 'لجان القسم', 
       icon: ClipboardList, 
       roles: [UserRole.ADMIN, UserRole.STAFF] 
     },
-    // 6. الهيكل الإداري واللجان
     { 
       path: '/formation', 
       label: 'الهيكل الإداري واللجان', 
       icon: Network, 
       roles: [UserRole.ADMIN, UserRole.STAFF] 
     },
-    // 7. الخطة البحثية للقسم
     { 
       path: '/research-plan', 
       label: 'الخطة البحثية للقسم', 
       icon: Target, 
       roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.STUDENT_PG, UserRole.STUDENT_UG] 
     },
-    // 8. أنشطة وفعاليات القسم
     { 
       path: '/events', 
       label: 'أنشطة وفعاليات القسم', 
       icon: Megaphone, 
       roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.STUDENT_PG, UserRole.STUDENT_UG, UserRole.ALUMNI, UserRole.EMPLOYEE] 
     },
-    // 9. مدير الدراسات العليا
     { 
         path: '/pg-manager', 
         label: 'مدير الدراسات العليا', 
         icon: FileClock, 
         roles: [UserRole.ADMIN, UserRole.STAFF] 
     },
-    // (مضاف للحفاظ على الميزة) المستودع الرقمي
     { 
       path: '/repository', 
       label: 'المستودع الرقمي للإنتاج العلمي', 
       icon: Library, 
       roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.STUDENT_PG, UserRole.STUDENT_UG, UserRole.ALUMNI, UserRole.EMPLOYEE] 
     },
-    // 10. سجل العهدة
-    { 
-      path: '/inventory', 
-      label: 'سجل العهدة', 
-      icon: Microscope, 
-      roles: [UserRole.ADMIN, UserRole.STAFF] 
-    },
-    // 11. إدارة المعامل
-    { 
-      path: '/labs', 
-      label: 'إدارة المعامل', 
-      icon: FlaskConical, 
-      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.STUDENT_PG] 
-    },
-    // 12. إدارة صوبة القسم
-    { 
-      path: '/greenhouse', 
-      label: 'إدارة صوبة القسم', 
-      icon: Sprout, 
-      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.STUDENT_PG] 
-    },
-    // 13. هيئة التدريس
-    { 
-      path: '/staff', 
-      label: 'هيئة التدريس', 
-      icon: UserCircle, 
-      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.STUDENT_PG, UserRole.STUDENT_UG] 
-    },
-    // 14. التقرير السنوي
-    { 
-      path: '/annual-report', 
-      label: 'التقرير السنوي', 
-      icon: FileText, 
-      roles: [UserRole.ADMIN, UserRole.STAFF] 
-    },
-    // 15. إدارة الإجازات
-    { 
-      path: '/leaves', 
-      label: 'إدارة الإجازات', 
-      icon: CalendarDays, 
-      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.EMPLOYEE] 
-    },
-    // 16. إدارة النقل والندب والإعارة (الجديد)
-    { 
-      path: '/career-movements', 
-      label: 'إدارة النقل والندب والإعارة', 
-      icon: Plane, 
-      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.EMPLOYEE] 
-    },
-    // (مضاف للحفاظ على الميزة) دليل المقررات
     { 
       path: '/courses', 
       label: 'دليل المقررات الدراسية', 
       icon: BookOpen, 
       roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.STUDENT_PG, UserRole.STUDENT_UG, UserRole.DATA_ENTRY] 
     },
-    // 17. بوابة الطلاب
+    { 
+      path: '/inventory', 
+      label: 'سجل العهدة', 
+      icon: Microscope, 
+      roles: [UserRole.ADMIN, UserRole.STAFF] 
+    },
+    { 
+      path: '/labs', 
+      label: 'إدارة المعامل', 
+      icon: FlaskConical, 
+      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.STUDENT_PG] 
+    },
+    { 
+      path: '/greenhouse', 
+      label: 'إدارة صوبة القسم', 
+      icon: Sprout, 
+      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.STUDENT_PG] 
+    },
+    { 
+      path: '/staff', 
+      label: 'هيئة التدريس', 
+      icon: UserCircle, 
+      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.STUDENT_PG, UserRole.STUDENT_UG] 
+    },
+    { 
+      path: '/annual-report', 
+      label: 'التقرير السنوي', 
+      icon: FileText, 
+      roles: [UserRole.ADMIN, UserRole.STAFF] 
+    },
+    { 
+      path: '/leaves', 
+      label: 'إدارة الإجازات', 
+      icon: CalendarDays, 
+      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.EMPLOYEE] 
+    },
+    { 
+      path: '/career-movements', 
+      label: 'إدارة النقل والندب والإعارة', 
+      icon: Plane, 
+      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.EMPLOYEE] 
+    },
     { 
       path: '/students', 
       label: 'بوابة الطلاب', 
       icon: GraduationCap, 
       roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.STUDENT_PG, UserRole.STUDENT_UG] 
     },
-    // 18. رابطة الخريجين
     { 
       path: '/alumni', 
       label: 'رابطة الخريجين', 
       icon: Briefcase, 
       roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.ALUMNI] 
     },
-    // 19. إدارة المستخدمين
     { 
       path: '/users', 
       label: 'إدارة المستخدمين', 
       icon: UserCog, 
       roles: [UserRole.ADMIN] 
     },
-    // 20. سجل النشاطات
     { 
       path: '/activity-log', 
       label: 'سجل النشاطات', 
       icon: Activity, 
       roles: [UserRole.ADMIN] 
     },
-    // 21. البحث والاستعلام
     { 
       path: '/search', 
       label: 'البحث والاستعلام', 
