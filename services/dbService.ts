@@ -20,7 +20,7 @@ import {
   CourseMaterial, JobOpportunity, UndergraduateStudent, AlumniMember, User, 
   UserRole, Asset, Announcement, ScheduleItem, LabBooking, Lab, LabClass, 
   GreenhousePlot, GreenhouseHistoryItem, DeptEvent, ActivityLogItem, Employee,
-  DeptCouncilFormation, DeptCommitteeFormation, AnnualReport 
+  DeptCouncilFormation, DeptCommitteeFormation, AnnualReport, ResearchPlan, ResearchProposal
 } from '../types';
 
 // --- GOOGLE DRIVE UPLOAD SERVICE ---
@@ -606,6 +606,78 @@ export const getAllAnnualReports = async (year: string): Promise<AnnualReport[]>
     const q = query(collection(db, 'annual_reports'), where('academicYear', '==', year));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AnnualReport));
+};
+
+// --- RESEARCH PLAN Operations ---
+
+export const getActiveResearchPlan = async (): Promise<ResearchPlan | null> => {
+    // Simulate getting the active plan
+    const q = query(collection(db, 'research_plans'), where('status', '==', 'ACTIVE'));
+    const snapshot = await getDocs(q);
+    if (!snapshot.empty) {
+        return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as ResearchPlan;
+    }
+    // Seed if empty for demo purposes
+    await seedResearchPlan();
+    return getActiveResearchPlan();
+};
+
+export const getProposals = async (): Promise<ResearchProposal[]> => {
+    const q = query(collection(db, 'research_proposals'), orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ResearchProposal));
+};
+
+export const addProposal = async (proposal: Omit<ResearchProposal, 'id' | 'createdAt'>): Promise<void> => {
+    await addDoc(collection(db, 'research_proposals'), {
+        ...proposal,
+        createdAt: Date.now()
+    });
+};
+
+export const updateProposalStatus = async (id: string, status: string, notes?: string) => {
+    await updateDoc(doc(db, 'research_proposals', id), { status, adminNotes: notes });
+};
+
+// --- Helper: Seed Research Plan ---
+export const seedResearchPlan = async () => {
+    const plansCheck = await getDocs(collection(db, 'research_plans'));
+    if (!plansCheck.empty) return;
+
+    console.log("Seeding Research Plan...");
+    
+    const plan: Omit<ResearchPlan, 'id'> = {
+        title: "الخطة البحثية الخمسية لقسم النبات 2025-2030",
+        vision: "الريادة في مكافحة أمراض النبات باستخدام تقنيات النانو والتكنولوجيا الحيوية لخدمة الزراعة المستدامة.",
+        strategicGoals: ["رؤية مصر 2030", "الأمن الغذائي", "التغيرات المناخية"],
+        startDate: "2025-01-01",
+        endDate: "2030-12-31",
+        status: "ACTIVE",
+        axes: [
+            {
+                id: "axis1",
+                title: "المكافحة الحيوية لأمراض النبات",
+                description: "استخدام الكائنات الدقيقة والمستخلصات الطبيعية كبديل للمبيدات.",
+                coordinator: "أ.د/ محمد علي",
+                topics: [
+                    { id: "t1", title: "فاعلية فطر التريكوديرما في مقاومة عفن الجذور في القمح", goal: "تقليل التلوث", status: "IN_PROGRESS", studentName: "أحمد محمود" },
+                    { id: "t2", title: "استخدام مستخلصات النيم لمكافحة النيماتودا", goal: "بدائل آمنة", status: "AVAILABLE" }
+                ]
+            },
+            {
+                id: "axis2",
+                title: "تطبيقات النانو تكنولوجي في الزراعة",
+                description: "استخدام الجزيئات النانومترية في تشخيص وعلاج الأمراض.",
+                coordinator: "أ.د/ إبراهيم حسن",
+                topics: [
+                    { id: "t3", title: "تصنيع جزيئات الفضة النانومترية حيوياً", goal: "تطبيق حديث", status: "COMPLETED", completionDate: "2023-05-20" },
+                    { id: "t4", title: "التشخيص الجزيئي السريع للفيروسات", goal: "سرعة الكشف", status: "AVAILABLE" }
+                ]
+            }
+        ]
+    };
+
+    await addDoc(collection(db, 'research_plans'), plan);
 };
 
 // --- HELPER: SEED INITIAL DATA (Run Once) ---

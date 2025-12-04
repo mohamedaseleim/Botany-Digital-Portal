@@ -22,7 +22,8 @@ import {
   Megaphone, 
   Activity,
   Network,
-  FileText // أيقونة التقرير السنوي
+  FileText,
+  Target // استيراد أيقونة الخطة البحثية
 } from 'lucide-react';
 import { User, UserRole } from '../types';
 
@@ -76,14 +77,20 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       icon: Network, 
       roles: [UserRole.ADMIN, UserRole.STAFF] 
     },
-    // --- رابط التقرير السنوي (الجديد) ---
+    // --- رابط الخطة البحثية (جديد) ---
+    { 
+      path: '/research-plan', 
+      label: 'الخطة البحثية للقسم', 
+      icon: Target, 
+      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.STUDENT_PG, UserRole.STUDENT_UG] 
+    },
+    // -------------------------------
     { 
       path: '/annual-report', 
       label: 'التقرير السنوي', 
       icon: FileText, 
       roles: [UserRole.ADMIN, UserRole.STAFF] 
     },
-    // -----------------------------------
     { 
       path: '/events', 
       label: 'أنشطة وفعاليات القسم', 

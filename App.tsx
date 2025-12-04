@@ -17,8 +17,9 @@ import { Labs } from './pages/Labs';
 import { Greenhouse } from './pages/Greenhouse';
 import { Events } from './pages/Events';
 import { ActivityLogs } from './pages/ActivityLogs';
-import { DepartmentFormation } from './pages/DepartmentFormation'; 
-import { AnnualReportPage } from './pages/AnnualReport'; // تم إضافة الاستيراد هنا
+import { DepartmentFormation } from './pages/DepartmentFormation';
+import { AnnualReportPage } from './pages/AnnualReport';
+import { ResearchPlanPage } from './pages/ResearchPlan'; // تم إضافة الاستيراد هنا
 import { User, UserRole } from './types';
 import { loginUser, seedInitialData } from './services/dbService';
 import { Sprout, Users, Key, Loader2, ArrowLeft } from 'lucide-react';
@@ -26,7 +27,7 @@ import { Sprout, Users, Key, Loader2, ArrowLeft } from 'lucide-react';
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   
-  // حالة نموذج تسجيل الدخول
+  // Login Form State
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loggingIn, setLoggingIn] = useState(false);
@@ -65,13 +66,11 @@ const App: React.FC = () => {
       }
   };
 
-  // شاشة تسجيل الدخول
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center p-4" dir="rtl">
         <div className="bg-white p-8 rounded-2xl shadow-xl max-w-4xl w-full border border-green-100 flex flex-col md:flex-row gap-8">
           
-          {/* القسم الأيمن - الشعار والترحيب */}
           <div className="md:w-1/2 flex flex-col items-center justify-center text-center border-b md:border-b-0 md:border-l border-gray-100 pb-6 md:pb-0 md:pl-6">
             <div className="bg-green-100 p-6 rounded-full mb-6 animate-pulse">
               <Sprout className="w-16 h-16 text-green-700" />
@@ -83,7 +82,6 @@ const App: React.FC = () => {
             </p>
           </div>
           
-          {/* القسم الأيسر - نموذج الدخول */}
           <div className="md:w-1/2 flex flex-col justify-center">
             <h3 className="text-lg font-bold text-gray-700 mb-6 text-center border-b pb-2">تسجيل الدخول للبوابة</h3>
             
@@ -143,19 +141,15 @@ const App: React.FC = () => {
     );
   }
 
-  // التوجيه داخل التطبيق بعد تسجيل الدخول
   return (
     <HashRouter>
       <Layout user={user} onLogout={() => { setUser(null); setUsername(''); setPassword(''); }}>
         <Routes>
-          {/* الصفحة الرئيسية تختلف حسب دور المستخدم */}
           <Route path="/" element={
             user.role === UserRole.STUDENT_UG || user.role === UserRole.STUDENT_PG ? <StudentPortal user={user} /> : 
             user.role === UserRole.ALUMNI ? <AlumniPortal user={user} /> : 
             <Dashboard />
           } />
-          
-          {/* مسارات الصفحات المختلفة */}
           <Route path="/outgoing" element={<Outgoing user={user} />} />
           <Route path="/incoming" element={<Incoming user={user} />} />
           <Route path="/councils" element={<Council user={user} />} />
@@ -171,10 +165,9 @@ const App: React.FC = () => {
           <Route path="/greenhouse" element={<Greenhouse user={user} />} />
           <Route path="/events" element={<Events user={user} />} />
           <Route path="/formation" element={<DepartmentFormation user={user} />} />
-          <Route path="/annual-report" element={<AnnualReportPage user={user} />} /> {/* المسار الجديد */}
+          <Route path="/annual-report" element={<AnnualReportPage user={user} />} />
+          <Route path="/research-plan" element={<ResearchPlanPage user={user} />} /> {/* المسار الجديد للخطة البحثية */}
           <Route path="/activity-log" element={<ActivityLogs />} />
-          
-          {/* توجيه أي رابط غير معروف للصفحة الرئيسية */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </Layout>
