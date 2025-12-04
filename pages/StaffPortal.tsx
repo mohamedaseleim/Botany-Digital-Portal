@@ -6,6 +6,7 @@ import {
 import { StaffMember, User, UserRole, StaffDocuments, StaffDocItem, CoursePortfolio } from '../types';
 import { getStaff, updateStaff, deleteStaff, addStaff, logActivity } from '../services/dbService';
 
+// 1. تم جعل المستخدم إجبارياً (Required) لضمان عمل الصلاحيات
 interface StaffPortalProps {
     user: User;
 }
@@ -14,14 +15,12 @@ export const StaffPortal: React.FC<StaffPortalProps> = ({ user }) => {
     const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [submitting, setSubmitting] = useState(false);
-    
-    // Tab State
     const [activeTab, setActiveTab] = useState<'FACULTY' | 'ASSISTANT'>('FACULTY');
+    const [submitting, setSubmitting] = useState(false);
 
     // Modal State
-    const [isModalOpen, setIsModalOpen] = useState(false); // للمعلومات الأساسية
-    const [isDigitalProfileOpen, setIsDigitalProfileOpen] = useState(false); // للملف الرقمي
+    const [isModalOpen, setIsModalOpen] = useState(false); // (جديد) مودال البيانات الأساسية
+    const [isDigitalProfileOpen, setIsDigitalProfileOpen] = useState(false); // مودال الملف الرقمي (Portfolio)
     const [editingMember, setEditingMember] = useState<StaffMember | null>(null);
     
     // Form States
@@ -43,22 +42,27 @@ export const StaffPortal: React.FC<StaffPortalProps> = ({ user }) => {
         setLoading(false);
     };
 
-    // --- (1) دالة التحقق من الصلاحية ---
+    // --- (جديد) منطق الصلاحيات ---
+    // السماح بالتعديل: للمدير أو لصاحب الحساب فقط
     const canEdit = (targetMemberId: string) => {
-        // المدير يملك صلاحية كاملة
         if (isAdmin) return true;
-        // عضو هيئة التدريس يعدل ملفه الشخصي فقط
         if (user.role === UserRole.STAFF && user.id === targetMemberId) return true;
         return false;
     };
 
-    // --- Handlers ---
+    // السماح بالحذف والإضافة: للمدير فقط
+    const canManage = isAdmin; 
+    // -----------------------------
+
+    // --- (جديد) Handlers: Basic Data (Add/Edit/Delete) ---
 
     const handleOpenModal = (member?: StaffMember) => {
         if (member) {
+            // Edit Mode
             setEditingMember(member);
             setBasicFormData(member);
         } else {
+            // Add Mode
             setEditingMember(null);
             setBasicFormData({
                 name: '', rank: '', specialization: '', email: '', phone: '', subRole: 'FACULTY'
@@ -100,10 +104,13 @@ export const StaffPortal: React.FC<StaffPortalProps> = ({ user }) => {
         }
     };
 
+    // --- Handlers: Digital Profile (Portfolio) ---
+
     const openDigitalProfile = (member: StaffMember) => {
         setEditingMember(member);
         setDigitalProfileForm({
             ...member.documents,
+            // Ensure arrays are initialized
             promotionDecisions: member.documents?.promotionDecisions || [],
             adminPositions: member.documents?.adminPositions || [],
             extensionDecisions: member.documents?.extensionDecisions || [],
@@ -120,7 +127,6 @@ export const StaffPortal: React.FC<StaffPortalProps> = ({ user }) => {
     };
 
     const handleUpload = (field: keyof StaffDocuments) => {
-        // محاكاة الرفع
         const mockUrl = `https://drive.google.com/file/d/simulated_upload_${Math.floor(Math.random() * 10000)}`;
         setDigitalProfileForm(prev => ({ ...prev, [field]: mockUrl }));
         alert('تم رفع الملف (محاكاة)');
@@ -148,6 +154,32 @@ export const StaffPortal: React.FC<StaffPortalProps> = ({ user }) => {
         }));
     };
 
+    // Course Portfolio handlers
+    const handleAddCourse = (courseName: string) => {
+         if (!courseName) return;
+         const newCourse: CoursePortfolio = { courseName };
+         setDigitalProfileForm(prev => ({
+             ...prev,
+             coursePortfolios: [...(prev.coursePortfolios || []), newCourse]
+         }));
+    };
+    
+    const handleRemoveCourse = (index: number) => {
+         setDigitalProfileForm(prev => ({
+             ...prev,
+             coursePortfolios: (prev.coursePortfolios || []).filter((_, i) => i !== index)
+         }));
+    };
+
+    const handleCourseFileUpload = (index: number, field: keyof CoursePortfolio) => {
+        const mockUrl = `https://drive.google.com/file/d/course_upload_${Math.floor(Math.random() * 10000)}`;
+        setDigitalProfileForm(prev => {
+            const updated = [...(prev.coursePortfolios || [])];
+            updated[index] = { ...updated[index], [field]: mockUrl };
+            return { ...prev, coursePortfolios: updated };
+        });
+    };
+
     const handleSaveDigitalProfile = async () => {
         if (!editingMember) return;
         setSaving(true);
@@ -164,7 +196,7 @@ export const StaffPortal: React.FC<StaffPortalProps> = ({ user }) => {
         }
     };
 
-    // Filter Staff
+    // تصفية النتائج
     const filteredStaff = staffMembers.filter(s => 
         ((s.subRole || 'FACULTY') === activeTab) &&
         (s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -182,8 +214,8 @@ export const StaffPortal: React.FC<StaffPortalProps> = ({ user }) => {
                     <p className="text-gray-500 text-sm">أعضاء هيئة التدريس والهيئة المعاونة بقسم النبات</p>
                 </div>
                 
-                {/* (2) زر الإضافة يظهر للمدير فقط */}
-                {isAdmin && (
+                {/* (إضافة) زر إضافة عضو جديد يظهر للمدير فقط */}
+                {canManage && (
                     <button 
                         onClick={() => handleOpenModal()}
                         className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-green-700 shadow-sm"
@@ -220,9 +252,8 @@ export const StaffPortal: React.FC<StaffPortalProps> = ({ user }) => {
                     {filteredStaff.map(member => (
                         <div key={member.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow group">
                             <div className="p-6 flex flex-col items-center text-center relative">
-                                {/* (3) أزرار التعديل والحذف على البطاقة */}
+                                {/* (تعديل) أزرار التحكم تظهر عند التمرير وبناءً على الصلاحية */}
                                 <div className="absolute top-4 left-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    {/* زر التعديل: للمدير وصاحب البطاقة */}
                                     {canEdit(member.id) && (
                                         <button 
                                             onClick={() => handleOpenModal(member)} 
@@ -232,8 +263,7 @@ export const StaffPortal: React.FC<StaffPortalProps> = ({ user }) => {
                                             <Edit className="w-4 h-4" />
                                         </button>
                                     )}
-                                    {/* زر الحذف: للمدير فقط */}
-                                    {isAdmin && (
+                                    {canManage && (
                                         <button 
                                             onClick={() => handleDelete(member.id, member.name)} 
                                             className="p-2 bg-red-50 text-red-600 rounded-full hover:bg-red-100 transition-colors"
@@ -274,15 +304,10 @@ export const StaffPortal: React.FC<StaffPortalProps> = ({ user }) => {
                             </div>
                         </div>
                     ))}
-                    {filteredStaff.length === 0 && (
-                        <div className="col-span-full text-center py-12 text-gray-400">
-                            لا يوجد أعضاء مطابقين للبحث.
-                        </div>
-                    )}
                 </div>
             )}
 
-            {/* Modal 1: Basic Info (Add/Edit) */}
+            {/* (جديد) Modal 1: Basic Info (Edit Name, Rank, etc.) */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl animate-in fade-in zoom-in-95">
@@ -305,8 +330,8 @@ export const StaffPortal: React.FC<StaffPortalProps> = ({ user }) => {
                             <div><label className="block text-sm font-bold text-gray-700 mb-1">البريد</label><input type="email" className="w-full border p-2 rounded-lg" value={basicFormData.email || ''} onChange={e => setBasicFormData({...basicFormData, email: e.target.value})} /></div>
                             <div><label className="block text-sm font-bold text-gray-700 mb-1">الهاتف</label><input type="tel" className="w-full border p-2 rounded-lg" value={basicFormData.phone || ''} onChange={e => setBasicFormData({...basicFormData, phone: e.target.value})} /></div>
                             
-                            {/* (4) تغيير الفئة يظهر للمدير فقط */}
-                            {isAdmin && (
+                            {/* تغيير الفئة (للمدير فقط) */}
+                            {canManage && (
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-1">الفئة</label>
                                     <select className="w-full border p-2 rounded-lg bg-white" value={basicFormData.subRole || 'FACULTY'} onChange={e => setBasicFormData({...basicFormData, subRole: e.target.value as any})}>
@@ -318,16 +343,14 @@ export const StaffPortal: React.FC<StaffPortalProps> = ({ user }) => {
 
                             <div className="flex justify-end gap-3 pt-4 border-t">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-bold">إلغاء</button>
-                                <button type="submit" disabled={submitting} className="bg-green-600 text-white px-8 py-2 rounded-lg hover:bg-green-700 font-bold flex items-center gap-2 disabled:opacity-50">
-                                    {submitting && <Loader2 className="w-4 h-4 animate-spin"/>} حفظ
-                                </button>
+                                <button type="submit" disabled={submitting} className="bg-blue-600 text-white px-8 py-2 rounded-lg hover:bg-blue-700 font-bold">{submitting ? 'جاري الحفظ...' : 'حفظ'}</button>
                             </div>
                         </form>
                     </div>
                 </div>
             )}
 
-            {/* Modal 2: Digital Profile */}
+            {/* Modal 2: Digital Profile (Portfolio) */}
             {isDigitalProfileOpen && editingMember && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
                      <div className="bg-white rounded-xl w-full max-w-4xl max-h-[95vh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in-95">
@@ -337,7 +360,7 @@ export const StaffPortal: React.FC<StaffPortalProps> = ({ user }) => {
                                 <p className="text-green-100 text-sm">الملف الوظيفي الرقمي</p>
                             </div>
                             <div className="flex gap-2">
-                                {/* (5) زر تفعيل وضع التعديل: للمدير وصاحب الملف فقط */}
+                                {/* (تعديل) زر تفعيل وضع التعديل للمستندات: للمدير وصاحب الملف */}
                                 {canEdit(editingMember.id) && (
                                     !isEditingDigital ? (
                                         <button onClick={() => setIsEditingDigital(true)} className="bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 transition-colors border border-green-500">
@@ -374,8 +397,7 @@ export const StaffPortal: React.FC<StaffPortalProps> = ({ user }) => {
                                 </div>
                             </section>
 
-                            {/* ... (باقي أقسام الملف الرقمي بنفس النمط) ... */}
-                             <section>
+                            <section>
                                 <h4 className="text-lg font-bold text-gray-800 border-b pb-2 mb-4 flex items-center gap-2">
                                     <GraduationCap className="w-5 h-5 text-purple-600" /> المؤهلات العلمية
                                 </h4>
@@ -385,7 +407,8 @@ export const StaffPortal: React.FC<StaffPortalProps> = ({ user }) => {
                                     <DocCard title="شهادة الدكتوراه" url={digitalProfileForm.phdCert} isEditing={isEditingDigital} onUpload={() => handleUpload('phdCert')} />
                                 </div>
                             </section>
-                             <section>
+
+                            <section>
                                 <h4 className="text-lg font-bold text-gray-800 border-b pb-2 mb-4 flex items-center gap-2">
                                     <Award className="w-5 h-5 text-blue-600" /> النشاط العلمي
                                 </h4>
@@ -393,6 +416,20 @@ export const StaffPortal: React.FC<StaffPortalProps> = ({ user }) => {
                                     <MultiDocCard title="شهادات المؤتمرات والندوات" description="توثيق الحضور والمشاركة." items={digitalProfileForm.conferenceCerts} isEditing={isEditingDigital} onAdd={(title) => handleAddArrayItem('conferenceCerts', title)} onRemove={(id) => handleRemoveArrayItem('conferenceCerts', id)} />
                                     <DocCard title="قائمة الأبحاث المنشورة" url={digitalProfileForm.publicationsListFile} isEditing={isEditingDigital} onUpload={() => handleUpload('publicationsListFile')} />
                                 </div>
+                            </section>
+
+                            {/* Course Portfolios */}
+                            <section>
+                                <h4 className="text-lg font-bold text-gray-800 border-b pb-2 mb-4 flex items-center gap-2">
+                                    <CheckCircle2 className="w-5 h-5 text-green-600" /> ملف الجودة (Course Portfolio)
+                                </h4>
+                                <CoursePortfolioManager 
+                                    courses={digitalProfileForm.coursePortfolios} 
+                                    isEditing={isEditingDigital} 
+                                    onAdd={handleAddCourse}
+                                    onRemove={handleRemoveCourse}
+                                    onUploadFile={handleCourseFileUpload}
+                                />
                             </section>
                         </div>
                     </div>
@@ -469,3 +506,73 @@ const MultiDocCard: React.FC<MultiDocCardProps> = ({ title, description, items =
         </div>
     );
 };
+
+interface CoursePortfolioManagerProps {
+    courses?: CoursePortfolio[];
+    isEditing: boolean;
+    onAdd: (courseName: string) => void;
+    onRemove: (index: number) => void;
+    onUploadFile: (index: number, field: keyof CoursePortfolio) => void;
+}
+
+const CoursePortfolioManager: React.FC<CoursePortfolioManagerProps> = ({ courses = [], isEditing, onAdd, onRemove, onUploadFile }) => {
+    const [newCourseName, setNewCourseName] = useState('');
+
+    return (
+        <div className="space-y-4">
+            {courses.length > 0 ? (
+                courses.map((course, idx) => (
+                    <div key={idx} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                        <div className="flex justify-between items-center mb-3 border-b pb-2">
+                            <div className="flex items-center gap-2">
+                                <BookOpen className="w-5 h-5 text-green-600" />
+                                <h5 className="font-bold text-gray-800">{course.courseName}</h5>
+                            </div>
+                            {isEditing && (
+                                <button onClick={() => onRemove(idx)} className="text-red-500 hover:bg-red-50 p-1 rounded" title="حذف المقرر">
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            <CourseFileSlot label="توصيف المقرر" url={course.specsUrl} isEditing={isEditing} onUpload={() => onUploadFile(idx, 'specsUrl')} />
+                            <CourseFileSlot label="تقرير المقرر" url={course.reportUrl} isEditing={isEditing} onUpload={() => onUploadFile(idx, 'reportUrl')} />
+                            <CourseFileSlot label="نماذج امتحانات" url={course.examsUrl} isEditing={isEditing} onUpload={() => onUploadFile(idx, 'examsUrl')} />
+                            <CourseFileSlot label="عينات / إجابات" url={course.samplesUrl} isEditing={isEditing} onUpload={() => onUploadFile(idx, 'samplesUrl')} />
+                        </div>
+                    </div>
+                ))
+            ) : (
+                <p className="text-gray-400 text-sm text-center py-4 border border-dashed rounded-lg">لم يتم إضافة مقررات بعد.</p>
+            )}
+
+            {isEditing && (
+                <div className="bg-green-50 p-3 rounded-lg flex items-center gap-2 border border-green-200">
+                    <input type="text" placeholder="اسم المقرر الجديد (مثال: أمراض نبات عامة)" className="flex-1 p-2 rounded border border-green-300 focus:outline-none focus:ring-1 focus:ring-green-500 text-sm" value={newCourseName} onChange={(e) => setNewCourseName(e.target.value)} />
+                    <button onClick={() => { onAdd(newCourseName); setNewCourseName(''); }} className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700 flex items-center gap-1">
+                        <Plus className="w-4 h-4" /> إضافة مقرر
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const CourseFileSlot = ({ label, url, isEditing, onUpload }: { label: string, url?: string, isEditing: boolean, onUpload: () => void }) => (
+    <div className={`p-2 rounded border text-center flex flex-col items-center justify-center min-h-[80px] ${url ? 'bg-green-50 border-green-100' : 'bg-gray-50 border-gray-100'}`}>
+        <span className="text-xs font-semibold text-gray-700 mb-1">{label}</span>
+        <div className="flex items-center gap-1 mt-1">
+            {url ? (
+                <a href={url} target="_blank" rel="noreferrer" className="text-xs bg-white border border-gray-200 px-2 py-1 rounded text-green-700 hover:text-green-800">عرض</a>
+            ) : (
+                <span className="text-[10px] text-gray-400">فارغ</span>
+            )}
+            {isEditing && (
+                <button onClick={onUpload} className="p-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 border border-blue-200" title="رفع">
+                    <UploadCloud className="w-3 h-3" />
+                </button>
+            )}
+        </div>
+    </div>
+);
