@@ -375,6 +375,57 @@ export interface DeptCommitteeFormation {
     members: OrgMember[];
 }
 
+// --- Annual Report Interfaces ---
+
+export interface PublishedResearch {
+    id: string;
+    title: string;
+    journal: string;
+    date: string;
+    type: 'International' | 'Regional' | 'Local';
+    link?: string;
+    fileUrl?: string;
+}
+
+export interface OngoingResearch {
+    id: string;
+    topic: string;
+    stage: 'Data Collection' | 'Lab Experiments' | 'Writing' | 'Under Review';
+    progress: number; // 0-100
+    participants?: string;
+}
+
+export interface ScientificActivity {
+    conferences: { name: string; role: string; date: string; location: string }[];
+    thesesJudged: number; // تحكيم الرسائل
+    supervisionCount: number; // الإشراف الحالي
+    trainingCourses: string; // الدورات التدريبية
+}
+
+export interface CommunityActivity {
+    books: string; // المؤلفات والكتب
+    convoys: string; // القوافل
+    media: string; // الإعلام
+    memberships: string; // الجمعيات
+}
+
+export type ReportStatus = 'DRAFT' | 'SUBMITTED';
+
+export interface AnnualReport {
+    id: string;
+    userId: string; // ربط التقرير بالعضو
+    userName: string;
+    academicYear: string; // "2024-2025"
+    status: ReportStatus;
+    submissionDate?: string;
+    
+    // Data Tabs
+    publishedResearch: PublishedResearch[];
+    ongoingResearch: OngoingResearch[];
+    scientificActivity: ScientificActivity;
+    communityActivity: CommunityActivity;
+}
+
 export interface DashboardStats {
   totalIncoming: number;
   totalOutgoing: number;

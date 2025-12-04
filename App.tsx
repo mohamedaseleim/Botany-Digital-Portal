@@ -17,7 +17,8 @@ import { Labs } from './pages/Labs';
 import { Greenhouse } from './pages/Greenhouse';
 import { Events } from './pages/Events';
 import { ActivityLogs } from './pages/ActivityLogs';
-import { DepartmentFormation } from './pages/DepartmentFormation'; // استيراد صفحة الهيكل الإداري
+import { DepartmentFormation } from './pages/DepartmentFormation'; 
+import { AnnualReportPage } from './pages/AnnualReport'; // تم إضافة الاستيراد هنا
 import { User, UserRole } from './types';
 import { loginUser, seedInitialData } from './services/dbService';
 import { Sprout, Users, Key, Loader2, ArrowLeft } from 'lucide-react';
@@ -169,7 +170,8 @@ const App: React.FC = () => {
           <Route path="/labs" element={<Labs user={user} />} />
           <Route path="/greenhouse" element={<Greenhouse user={user} />} />
           <Route path="/events" element={<Events user={user} />} />
-          <Route path="/formation" element={<DepartmentFormation user={user} />} /> {/* المسار الجديد للهيكل الإداري */}
+          <Route path="/formation" element={<DepartmentFormation user={user} />} />
+          <Route path="/annual-report" element={<AnnualReportPage user={user} />} /> {/* المسار الجديد */}
           <Route path="/activity-log" element={<ActivityLogs />} />
           
           {/* توجيه أي رابط غير معروف للصفحة الرئيسية */}

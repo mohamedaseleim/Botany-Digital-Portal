@@ -20,15 +20,13 @@ import {
   CourseMaterial, JobOpportunity, UndergraduateStudent, AlumniMember, User, 
   UserRole, Asset, Announcement, ScheduleItem, LabBooking, Lab, LabClass, 
   GreenhousePlot, GreenhouseHistoryItem, DeptEvent, ActivityLogItem, Employee,
-  DeptCouncilFormation, DeptCommitteeFormation 
+  DeptCouncilFormation, DeptCommitteeFormation, AnnualReport 
 } from '../types';
 
 // --- GOOGLE DRIVE UPLOAD SERVICE ---
-// رابط السكربت الخاص بك للرفع إلى Google Drive
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwuWlnf0aFiBQKNWOsBuNEx_voz3XB3kwAzxL13ZhL6bfsotewcxKKMmkD58e5hDVZ1zA/exec";
 
 export const uploadFileToDrive = async (file: File): Promise<string> => {
-  // التحقق من حجم الملف (الحد الأقصى 50 ميجابايت تقريباً)
   if (file.size > 50 * 1024 * 1024) {
       throw new Error("حجم الملف كبير جداً. الحد الأقصى هو 50 ميجابايت.");
   }
@@ -38,7 +36,6 @@ export const uploadFileToDrive = async (file: File): Promise<string> => {
     
     reader.onload = async () => {
       try {
-        // 1. تحويل الملف إلى Base64
         const resultStr = reader.result as string;
         const base64Data = resultStr.split(',')[1];
         
@@ -47,14 +44,12 @@ export const uploadFileToDrive = async (file: File): Promise<string> => {
             return;
         }
 
-        // 2. تجهيز البيانات للإرسال
         const payload = {
           base64: base64Data,
           type: file.type,
           name: file.name
         };
 
-        // 3. الإرسال إلى Google Apps Script
         const response = await fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
           body: JSON.stringify(payload)
@@ -67,14 +62,14 @@ export const uploadFileToDrive = async (file: File): Promise<string> => {
         const result = await response.json();
 
         if (result.status === 'success' && result.url) {
-          resolve(result.url); // رابط الملف المباشر
+          resolve(result.url);
         } else {
           reject(new Error(result.message || "فشل الرفع: لم يتم استلام رابط صحيح."));
         }
 
       } catch (error) {
         console.error("Google Drive Upload Error:", error);
-        reject(new Error("فشل الاتصال بخدمة Google Drive. تأكد من أن السكربت منشور بصلاحية 'Anyone'."));
+        reject(new Error("فشل الاتصال بخدمة Google Drive."));
       }
     };
 
@@ -122,7 +117,7 @@ export const deleteActivityLog = async (id: string): Promise<void> => {
 
 export const loginUser = async (username: string, password: string): Promise<User | null> => {
   try {
-    // 1. Staff (أعضاء هيئة التدريس + Admin)
+    // 1. Staff
     const staffQ = query(collection(db, 'staff'), where('username', '==', username), where('password', '==', password));
     const staffSnap = await getDocs(staffQ);
     
@@ -140,7 +135,7 @@ export const loginUser = async (username: string, password: string): Promise<Use
       };
     }
 
-    // 2. Employees (الموظفين والإداريين - جديد)
+    // 2. Employees
     const empQ = query(collection(db, 'employees'), where('username', '==', username), where('password', '==', password));
     const empSnap = await getDocs(empQ);
     if (!empSnap.empty) {
@@ -149,7 +144,7 @@ export const loginUser = async (username: string, password: string): Promise<Use
       return { id: empSnap.docs[0].id, name: userDoc.name, role: UserRole.EMPLOYEE, details: userDoc.jobTitle };
     }
 
-    // 3. PG Students (دراسات عليا)
+    // 3. PG Students
     const pgQ = query(collection(db, 'pg_students'), where('username', '==', username), where('password', '==', password));
     const pgSnap = await getDocs(pgQ);
     if (!pgSnap.empty) {
@@ -158,7 +153,7 @@ export const loginUser = async (username: string, password: string): Promise<Use
       return { id: pgSnap.docs[0].id, name: userDoc.name, role: UserRole.STUDENT_PG, details: 'دراسات عليا' };
     }
 
-    // 4. UG Students (طلاب)
+    // 4. UG Students
     const ugQ = query(collection(db, 'ug_students'), where('username', '==', username), where('password', '==', password));
     const ugSnap = await getDocs(ugQ);
     if (!ugSnap.empty) {
@@ -167,7 +162,7 @@ export const loginUser = async (username: string, password: string): Promise<Use
       return { id: ugSnap.docs[0].id, name: userDoc.name, role: UserRole.STUDENT_UG, details: 'طالب جامعي' };
     }
 
-    // 5. Alumni (خريجين)
+    // 5. Alumni
     const alumniQ = query(collection(db, 'alumni'), where('username', '==', username), where('password', '==', password));
     const alumniSnap = await getDocs(alumniQ);
     if (!alumniSnap.empty) {
@@ -273,7 +268,7 @@ export const deleteStaff = async (id: string): Promise<void> => {
   await deleteDoc(doc(db, 'staff', id));
 };
 
-// --- EMPLOYEE Operations (New) ---
+// --- EMPLOYEE Operations ---
 
 export const getEmployees = async (): Promise<Employee[]> => {
   const snapshot = await getDocs(collection(db, 'employees'));
@@ -548,7 +543,7 @@ export const deleteEvent = async (id: string): Promise<void> => {
   await deleteDoc(doc(db, 'events', id));
 };
 
-// --- DEPARTMENT FORMATION Operations (New) ---
+// --- DEPARTMENT FORMATION Operations ---
 
 export const getDeptCouncils = async (): Promise<DeptCouncilFormation[]> => {
   const snapshot = await getDocs(collection(db, 'dept_councils'));
@@ -582,6 +577,35 @@ export const updateDeptCommittee = async (id: string, updates: Partial<DeptCommi
 
 export const deleteDeptCommittee = async (id: string): Promise<void> => {
   await deleteDoc(doc(db, 'dept_committees', id));
+};
+
+// --- ANNUAL REPORT Operations ---
+
+export const getMyAnnualReport = async (userId: string, year: string): Promise<AnnualReport | null> => {
+  const q = query(
+    collection(db, 'annual_reports'), 
+    where('userId', '==', userId),
+    where('academicYear', '==', year)
+  );
+  const snapshot = await getDocs(q);
+  if (!snapshot.empty) {
+      return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as AnnualReport;
+  }
+  return null;
+};
+
+export const saveAnnualReport = async (report: Omit<AnnualReport, 'id'>, reportId?: string): Promise<void> => {
+  if (reportId) {
+      await updateDoc(doc(db, 'annual_reports', reportId), { ...report });
+  } else {
+      await addDoc(collection(db, 'annual_reports'), report);
+  }
+};
+
+export const getAllAnnualReports = async (year: string): Promise<AnnualReport[]> => {
+    const q = query(collection(db, 'annual_reports'), where('academicYear', '==', year));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AnnualReport));
 };
 
 // --- HELPER: SEED INITIAL DATA (Run Once) ---

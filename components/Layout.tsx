@@ -21,7 +21,8 @@ import {
   Sprout, 
   Megaphone, 
   Activity,
-  Network // أيقونة الهيكل الإداري
+  Network,
+  FileText // أيقونة التقرير السنوي
 } from 'lucide-react';
 import { User, UserRole } from '../types';
 
@@ -69,14 +70,20 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       icon: ClipboardList, 
       roles: [UserRole.ADMIN, UserRole.STAFF] 
     },
-    // --- رابط الهيكل الإداري ---
     { 
       path: '/formation', 
       label: 'الهيكل الإداري واللجان', 
       icon: Network, 
       roles: [UserRole.ADMIN, UserRole.STAFF] 
     },
-    // -------------------------
+    // --- رابط التقرير السنوي (الجديد) ---
+    { 
+      path: '/annual-report', 
+      label: 'التقرير السنوي', 
+      icon: FileText, 
+      roles: [UserRole.ADMIN, UserRole.STAFF] 
+    },
+    // -----------------------------------
     { 
       path: '/events', 
       label: 'أنشطة وفعاليات القسم', 
