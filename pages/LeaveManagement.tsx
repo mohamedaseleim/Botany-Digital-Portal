@@ -19,7 +19,7 @@ interface LeaveManagementProps {
 export const LeaveManagement: React.FC<LeaveManagementProps> = ({ user }) => {
     const isAdmin = user.role === UserRole.ADMIN;
     
-    // تعيين التبويب الافتراضي بناءً على الدور
+    // تعيين التبويب الافتراضي: المدير يرى كل الطلبات، الموظف يرى لوحته
     const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'NEW' | 'HISTORY' | 'SUBSTITUTE' | 'ALL_REQUESTS'>(
         isAdmin ? 'ALL_REQUESTS' : 'DASHBOARD'
     );
@@ -28,7 +28,7 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({ user }) => {
     const [subRequests, setSubRequests] = useState<LeaveRequest[]>([]);
     const [allLeaves, setAllLeaves] = useState<LeaveRequest[]>([]); 
     
-    // قائمة البدلاء
+    // قائمة البدلاء (تم تغيير النوع ليقبل أي موظف)
     const [potentialSubstitutes, setPotentialSubstitutes] = useState<{id: string, name: string, role: string}[]>([]);
     
     const [loading, setLoading] = useState(true);
@@ -65,29 +65,32 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({ user }) => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            // جلب كل البيانات المطلوبة مرة واحدة
-            const [leaves, subs, staffData, employeesData] = await Promise.all([
+            // 1. جلب البيانات الأساسية للمستخدم الحالي
+            const [leaves, subs] = await Promise.all([
                 getMyLeaves(user.id),
-                getSubstituteRequests(user.id),
-                getStaff(),
-                getEmployees()
+                getSubstituteRequests(user.id)
             ]);
             
             setMyLeaves(leaves);
             setSubRequests(subs);
-            
-            // دمج القوائم وتصفية المستخدم الحالي
-            const combinedList = [
-                ...staffData.map(s => ({ id: s.id, name: s.name, role: s.rank || 'عضو هيئة تدريس' })),
-                ...employeesData.map(e => ({ id: e.id, name: e.name, role: e.jobTitle || 'موظف' }))
-            ];
 
-            // التأكد من استبعاد المستخدم الحالي من القائمة
-            const others = combinedList.filter(p => p.id !== user.id);
-            setPotentialSubstitutes(others);
+            // 2. جلب قائمة البدلاء (هيئة تدريس + موظفين) - يتم الجلب مرة واحدة
+            // هذا الإصلاح يضمن ظهور القائمة حتى لو كنت المستخدم الوحيد في فئتك
+            if (potentialSubstitutes.length === 0) {
+                const [staffData, employeesData] = await Promise.all([getStaff(), getEmployees()]);
+                
+                const combinedList = [
+                    ...staffData.map(s => ({ id: s.id, name: s.name, role: s.rank || 'عضو هيئة تدريس' })),
+                    ...employeesData.map(e => ({ id: e.id, name: e.name, role: e.jobTitle || 'موظف' }))
+                ];
 
-            // جلب كل الإجازات للمدير
-            if (isAdmin) {
+                // تصفية القائمة: استثناء المستخدم الحالي
+                const others = combinedList.filter(p => p.id !== user.id);
+                setPotentialSubstitutes(others);
+            }
+
+            // 3. جلب كل الإجازات للمدير
+            if (isAdmin && activeTab === 'ALL_REQUESTS') {
                 const all = await getAllLeaves();
                 setAllLeaves(all);
             }
@@ -199,17 +202,17 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({ user }) => {
                 startDate: formData.startDate,
                 endDate: formData.endDate,
                 daysCount: days,
-                substituteId: formData.substituteId,
-                substituteName: substituteName,
+                substituteId: formData.substituteId || null, // Ensure not undefined
+                substituteName: substituteName || null,
                 
-                address: formData.address,
-                phone: formData.phone,
-                hospital: formData.hospital,
-                conferenceName: formData.conferenceName,
-                conferenceLocation: formData.conferenceLocation,
-                spouseName: formData.spouseName,
-                spouseJob: formData.spouseJob,
-                country: formData.country,
+                address: formData.address || null,
+                phone: formData.phone || null,
+                hospital: formData.hospital || null,
+                conferenceName: formData.conferenceName || null,
+                conferenceLocation: formData.conferenceLocation || null,
+                spouseName: formData.spouseName || null,
+                spouseJob: formData.spouseJob || null,
+                country: formData.country || null,
                 ...(uploadedUrls.length > 0 && { documentsUrls: uploadedUrls, medicalReportUrl: uploadedUrls[0] })
             };
 
@@ -218,12 +221,13 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({ user }) => {
                 await logActivity('تعديل طلب إجازة', user.name, `تم تعديل طلب ${getLeaveLabel(formData.type)}`);
                 alert('تم تعديل الطلب بنجاح');
             } else {
+                // Cast to any to avoid strict type checking on optional nulls, firebase handles nulls fine
                 await addLeaveRequest(requestData as any);
                 await logActivity('طلب إجازة', user.name, `طلب إجازة ${getLeaveLabel(formData.type)} لمدة ${days} أيام`);
                 alert('تم تقديم الطلب بنجاح');
             }
 
-            setActiveTab(isAdmin ? 'ALL_REQUESTS' : 'HISTORY');
+            setActiveTab('HISTORY');
             fetchData();
         } catch (error) {
             console.error(error);
@@ -246,13 +250,14 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({ user }) => {
             alert('حدث خطأ');
         }
     };
-
+    
+    // Admin Action: Approve/Reject as Head of Dept
     const handleAdminAction = async (reqId: string, status: 'APPROVED' | 'REJECTED') => {
         if(!window.confirm(`هل أنت متأكد من ${status === 'APPROVED' ? 'اعتماد' : 'رفض'} هذا الطلب؟`)) return;
         try {
             await updateDoc(doc(db, 'leave_requests', reqId), { status });
             await logActivity('قرار إجازة', user.name, `تم ${status === 'APPROVED' ? 'اعتماد' : 'رفض'} طلب إجازة`);
-            fetchData();
+            fetchData(); // Refresh list
         } catch (e) { alert("خطأ أثناء تنفيذ الإجراء"); }
     };
 
@@ -265,6 +270,7 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({ user }) => {
 
         return (
             <div className="space-y-6 animate-in fade-in">
+                {/* Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="bg-orange-50 p-6 rounded-xl border border-orange-100">
                         <div className="flex justify-between items-start">
@@ -311,11 +317,11 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({ user }) => {
                                 <div className="flex items-center gap-3">
                                     <div className="p-3 bg-green-200 rounded-full"><ShieldCheck className="w-6 h-6 text-green-800"/></div>
                                     <div>
-                                        <h3 className="text-lg font-bold text-green-900">لوحة المدير (الطلبات الواردة)</h3>
-                                        <p className="text-sm text-green-700">يوجد {pendingAdminCount} طلب بانتظار الاعتماد النهائي</p>
+                                        <h3 className="text-lg font-bold text-green-900">لوحة المدير (إدارة جميع الطلبات)</h3>
+                                        <p className="text-sm text-green-700">انقر هنا لمراجعة واعتماد طلبات الإجازات لجميع الأعضاء</p>
                                     </div>
                                 </div>
-                                <span className="bg-white text-green-800 px-4 py-2 rounded-lg text-sm font-bold shadow-sm">عرض كل الطلبات</span>
+                                <span className="bg-white text-green-800 px-4 py-2 rounded-lg text-sm font-bold shadow-sm">عرض الكل</span>
                             </div>
                         </div>
                     )}
@@ -361,15 +367,11 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({ user }) => {
                     </div>
                     <div>
                         <label className="block text-sm font-bold text-gray-700 mb-2">تاريخ البداية</label>
-                        <input type="date" required className="w-full p-3 border border-gray-300 rounded-lg" 
-                            value={formData.startDate} onChange={e => setFormData({...formData, startDate: e.target.value})}
-                        />
+                        <input type="date" required className="w-full p-3 border border-gray-300 rounded-lg" value={formData.startDate} onChange={e => setFormData({...formData, startDate: e.target.value})} />
                     </div>
                     <div>
                         <label className="block text-sm font-bold text-gray-700 mb-2">تاريخ النهاية</label>
-                        <input type="date" required className="w-full p-3 border border-gray-300 rounded-lg" 
-                            value={formData.endDate} onChange={e => setFormData({...formData, endDate: e.target.value})}
-                        />
+                        <input type="date" required className="w-full p-3 border border-gray-300 rounded-lg" value={formData.endDate} onChange={e => setFormData({...formData, endDate: e.target.value})} />
                         {calculateDays() > 0 && <p className="text-xs text-green-600 mt-1 font-bold">المدة: {calculateDays()} يوم</p>}
                     </div>
                 </div>
@@ -386,14 +388,14 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({ user }) => {
                     >
                         <option value="">-- اختر الزميل --</option>
                         {potentialSubstitutes.length === 0 ? (
-                             <option disabled>لا يوجد زملاء آخرين مسجلين</option>
+                             <option disabled>القائمة فارغة. يرجى إضافة زملاء آخرين من لوحة التحكم.</option>
                         ) : (
                             potentialSubstitutes.map(s => <option key={s.id} value={s.id}>{s.name} - {s.role}</option>)
                         )}
                     </select>
                     {potentialSubstitutes.length === 0 && (
                         <p className="text-xs text-red-500 font-bold mt-1">
-                            تنبيه: القائمة فارغة. تأكد من وجود أعضاء آخرين في النظام.
+                            تنبيه: القائمة فارغة لأنك المستخدم الوحيد المسجل أو لم يتم تحميل القائمة بشكل صحيح.
                         </p>
                     )}
                     <p className="text-xs text-purple-600 mt-2">* سيتم إرسال إشعار للزميل للموافقة على تغطية محاضراتك.</p>
@@ -435,7 +437,7 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({ user }) => {
                 )}
 
                 <div className="flex justify-end gap-3 pt-4 border-t">
-                    <button type="button" onClick={() => setActiveTab(isAdmin ? 'ALL_REQUESTS' : 'DASHBOARD')} className="px-6 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-bold">إلغاء</button>
+                    <button type="button" onClick={() => setActiveTab('DASHBOARD')} className="px-6 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-bold">إلغاء</button>
                     <button type="submit" disabled={submitting} className="px-8 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold flex items-center gap-2 disabled:opacity-50">
                         {submitting ? <Loader2 className="w-5 h-5 animate-spin"/> : (isEditing ? <Save className="w-5 h-5"/> : <CheckCircle2 className="w-5 h-5"/>)} 
                         {isEditing ? 'حفظ التعديلات' : 'إرسال الطلب'}

@@ -22,7 +22,7 @@ import {
   GreenhousePlot, GreenhouseHistoryItem, DeptEvent, ActivityLogItem, Employee,
   DeptCouncilFormation, DeptCommitteeFormation, AnnualReport, ResearchPlan, ResearchProposal,
   LeaveRequest, LeaveStatus, CareerMovementRequest, LoanRequest,
-  RepositoryItem, RepositoryRequest, Course, DeptForm // استيراد الأنواع الجديدة
+  RepositoryItem, RepositoryRequest, Course, DeptForm 
 } from '../types';
 
 // --- GOOGLE DRIVE UPLOAD SERVICE ---
@@ -101,8 +101,11 @@ export const getActivityLogs = async (): Promise<ActivityLogItem[]> => {
     const q = query(collection(db, 'activity_logs'), limit(100));
     const snapshot = await getDocs(q);
     
-    let logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ActivityLogItem));
-    logs.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    // Fix: Cast doc.data() to any to avoid spread error
+    let logs = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as ActivityLogItem));
+    
+    // Fix: Use timestamp string for sorting since createdAt is not in ActivityLogItem interface
+    logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     
     return logs;
   } catch (error) {
@@ -187,7 +190,8 @@ export const getDocuments = async (type?: DocType): Promise<ArchiveDocument[]> =
       q = query(archiveRef);
     }
     const snapshot = await getDocs(q);
-    let docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ArchiveDocument));
+    // Fix: Cast to any before spread
+    let docs = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as ArchiveDocument));
     return docs.sort((a, b) => b.createdAt - a.createdAt);
   } catch (error) {
     console.warn("Error fetching docs:", error);
@@ -250,7 +254,7 @@ export const getStats = async (): Promise<DashboardStats> => {
 
 export const getStaff = async (): Promise<StaffMember[]> => {
   const snapshot = await getDocs(collection(db, 'staff'));
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StaffMember));
+  return snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as StaffMember));
 };
 
 export const addStaff = async (member: Omit<StaffMember, 'id'>): Promise<void> => {
@@ -269,7 +273,7 @@ export const deleteStaff = async (id: string): Promise<void> => {
 
 export const getEmployees = async (): Promise<Employee[]> => {
   const snapshot = await getDocs(collection(db, 'employees'));
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Employee));
+  return snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as Employee));
 };
 
 export const addEmployee = async (emp: Omit<Employee, 'id'>): Promise<void> => {
@@ -325,7 +329,7 @@ export const deletePGStudent = async (id: string): Promise<void> => {
 
 export const getUGStudents = async (): Promise<UndergraduateStudent[]> => {
   const snapshot = await getDocs(collection(db, 'ug_students'));
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UndergraduateStudent));
+  return snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as UndergraduateStudent));
 };
 
 export const addUGStudent = async (student: Omit<UndergraduateStudent, 'id'>): Promise<void> => {
@@ -344,7 +348,7 @@ export const deleteUGStudent = async (id: string): Promise<void> => {
 
 export const getAlumni = async (): Promise<AlumniMember[]> => {
   const snapshot = await getDocs(collection(db, 'alumni'));
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AlumniMember));
+  return snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as AlumniMember));
 };
 
 export const addAlumni = async (member: Omit<AlumniMember, 'id'>): Promise<void> => {
@@ -363,7 +367,7 @@ export const deleteAlumni = async (id: string): Promise<void> => {
 
 export const getJobs = async (): Promise<JobOpportunity[]> => {
   const snapshot = await getDocs(collection(db, 'jobs'));
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as JobOpportunity));
+  return snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as JobOpportunity));
 };
 
 export const addJob = async (job: Omit<JobOpportunity, 'id'>): Promise<void> => {
@@ -382,7 +386,7 @@ export const deleteJob = async (id: string): Promise<void> => {
 
 export const getAssets = async (): Promise<Asset[]> => {
   const snapshot = await getDocs(collection(db, 'assets'));
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Asset));
+  return snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as Asset));
 };
 
 export const addAsset = async (asset: Omit<Asset, 'id' | 'createdAt'>): Promise<void> => {
@@ -401,7 +405,7 @@ export const deleteAsset = async (id: string): Promise<void> => {
 
 export const getLabs = async (): Promise<Lab[]> => {
   const snapshot = await getDocs(collection(db, 'labs'));
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Lab));
+  return snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as Lab));
 };
 
 export const addLab = async (lab: Omit<Lab, 'id'>): Promise<void> => {
@@ -420,7 +424,7 @@ export const deleteLab = async (id: string): Promise<void> => {
 
 export const getLabClasses = async (): Promise<LabClass[]> => {
   const snapshot = await getDocs(collection(db, 'lab_classes'));
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LabClass));
+  return snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as LabClass));
 };
 
 export const addLabClass = async (labClass: Omit<LabClass, 'id'>): Promise<void> => {
@@ -439,7 +443,7 @@ export const deleteLabClass = async (id: string): Promise<void> => {
 
 export const getLabBookings = async (): Promise<LabBooking[]> => {
   const snapshot = await getDocs(collection(db, 'lab_bookings'));
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LabBooking));
+  return snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as LabBooking));
 };
 
 export const addLabBooking = async (booking: Omit<LabBooking, 'id' | 'createdAt'>): Promise<void> => {
@@ -462,7 +466,7 @@ export const deleteLabBooking = async (id: string): Promise<void> => {
 
 export const getGreenhousePlots = async (): Promise<GreenhousePlot[]> => {
   const snapshot = await getDocs(collection(db, 'greenhouse_plots'));
-  const plots = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as GreenhousePlot));
+  const plots = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as GreenhousePlot));
   
   if (plots.length === 0) {
     const batch = writeBatch(db);
@@ -484,7 +488,7 @@ export const updateGreenhousePlot = async (id: string, updates: Partial<Greenhou
 
 export const getGreenhouseHistory = async (): Promise<GreenhouseHistoryItem[]> => {
   const snapshot = await getDocs(collection(db, 'greenhouse_history'));
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as GreenhouseHistoryItem));
+  return snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as GreenhouseHistoryItem));
 };
 export const addGreenhouseHistory = async (item: Omit<GreenhouseHistoryItem, 'id'>): Promise<void> => {
   await addDoc(collection(db, 'greenhouse_history'), item);
@@ -495,7 +499,7 @@ export const deleteGreenhouseHistory = async (id: string): Promise<void> => {
 
 export const getMaterials = async (): Promise<CourseMaterial[]> => {
   const snapshot = await getDocs(collection(db, 'materials'));
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CourseMaterial));
+  return snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as CourseMaterial));
 };
 export const addMaterial = async (material: Omit<CourseMaterial, 'id'>): Promise<void> => {
   await addDoc(collection(db, 'materials'), material);
@@ -506,7 +510,7 @@ export const deleteMaterial = async (id: string): Promise<void> => {
 
 export const getAnnouncements = async (): Promise<Announcement[]> => {
   const snapshot = await getDocs(collection(db, 'announcements'));
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Announcement));
+  return snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as Announcement));
 };
 export const addAnnouncement = async (announcement: Omit<Announcement, 'id'>): Promise<void> => {
   await addDoc(collection(db, 'announcements'), announcement);
@@ -517,7 +521,7 @@ export const deleteAnnouncement = async (id: string): Promise<void> => {
 
 export const getSchedules = async (): Promise<ScheduleItem[]> => {
   const snapshot = await getDocs(collection(db, 'schedules'));
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ScheduleItem));
+  return snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as ScheduleItem));
 };
 export const addSchedule = async (schedule: Omit<ScheduleItem, 'id'>): Promise<void> => {
   await addDoc(collection(db, 'schedules'), schedule);
@@ -528,7 +532,7 @@ export const deleteSchedule = async (id: string): Promise<void> => {
 
 export const getEvents = async (): Promise<DeptEvent[]> => {
   const snapshot = await getDocs(collection(db, 'events'));
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DeptEvent));
+  return snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as DeptEvent));
 };
 export const addEvent = async (event: Omit<DeptEvent, 'id' | 'createdAt'>): Promise<void> => {
   await addDoc(collection(db, 'events'), { ...event, createdAt: Date.now() });
@@ -544,7 +548,7 @@ export const deleteEvent = async (id: string): Promise<void> => {
 
 export const getDeptCouncils = async (): Promise<DeptCouncilFormation[]> => {
   const snapshot = await getDocs(collection(db, 'dept_councils'));
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DeptCouncilFormation));
+  return snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as DeptCouncilFormation));
 };
 
 export const addDeptCouncil = async (council: Omit<DeptCouncilFormation, 'id'>): Promise<void> => {
@@ -561,7 +565,7 @@ export const deleteDeptCouncil = async (id: string): Promise<void> => {
 
 export const getDeptCommittees = async (): Promise<DeptCommitteeFormation[]> => {
   const snapshot = await getDocs(collection(db, 'dept_committees'));
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DeptCommitteeFormation));
+  return snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as DeptCommitteeFormation));
 };
 
 export const addDeptCommittee = async (committee: Omit<DeptCommitteeFormation, 'id'>): Promise<void> => {
@@ -586,7 +590,7 @@ export const getMyAnnualReport = async (userId: string, year: string): Promise<A
   );
   const snapshot = await getDocs(q);
   if (!snapshot.empty) {
-      return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as AnnualReport;
+      return { id: snapshot.docs[0].id, ...(snapshot.docs[0].data() as any) } as AnnualReport;
   }
   return null;
 };
@@ -602,7 +606,7 @@ export const saveAnnualReport = async (report: Omit<AnnualReport, 'id'>, reportI
 export const getAllAnnualReports = async (year: string): Promise<AnnualReport[]> => {
     const q = query(collection(db, 'annual_reports'), where('academicYear', '==', year));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AnnualReport));
+    return snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as AnnualReport));
 };
 
 // --- RESEARCH PLAN Operations ---
@@ -611,7 +615,7 @@ export const getActiveResearchPlan = async (): Promise<ResearchPlan | null> => {
     const q = query(collection(db, 'research_plans'), where('status', '==', 'ACTIVE'));
     const snapshot = await getDocs(q);
     if (!snapshot.empty) {
-        return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as ResearchPlan;
+        return { id: snapshot.docs[0].id, ...(snapshot.docs[0].data() as any) } as ResearchPlan;
     }
     await seedResearchPlan();
     return getActiveResearchPlan();
@@ -620,7 +624,7 @@ export const getActiveResearchPlan = async (): Promise<ResearchPlan | null> => {
 export const getAllResearchPlans = async (): Promise<ResearchPlan[]> => {
     const q = query(collection(db, 'research_plans'), orderBy('startDate', 'desc'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ResearchPlan));
+    return snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as ResearchPlan));
 };
 
 export const addResearchPlan = async (plan: Omit<ResearchPlan, 'id'>): Promise<void> => {
@@ -646,7 +650,7 @@ export const archiveResearchPlan = async (id: string): Promise<void> => {
 export const getProposals = async (): Promise<ResearchProposal[]> => {
     const q = query(collection(db, 'research_proposals'), orderBy('createdAt', 'desc'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ResearchProposal));
+    return snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as ResearchProposal));
 };
 
 export const addProposal = async (proposal: Omit<ResearchProposal, 'id' | 'createdAt'>): Promise<void> => {
@@ -673,19 +677,17 @@ export const addLeaveRequest = async (request: Omit<LeaveRequest, 'id' | 'create
 };
 
 export const getMyLeaves = async (userId: string): Promise<LeaveRequest[]> => {
-    const q = query(collection(db, 'leave_requests'), where('userId', '==', userId), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, 'leave_requests'), where('userId', '==', userId));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LeaveRequest));
+    const docs = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as LeaveRequest));
+    return docs.sort((a, b) => b.createdAt - a.createdAt);
 };
 
 export const getSubstituteRequests = async (userId: string): Promise<LeaveRequest[]> => {
-    const q = query(
-        collection(db, 'leave_requests'), 
-        where('substituteId', '==', userId), 
-        where('status', '==', 'PENDING_SUBSTITUTE')
-    );
+    const q = query(collection(db, 'leave_requests'), where('substituteId', '==', userId));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LeaveRequest));
+    let docs = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as LeaveRequest));
+    return docs.filter(doc => doc.status === 'PENDING_SUBSTITUTE');
 };
 
 export const respondToSubstituteRequest = async (requestId: string, accept: boolean, reason?: string) => {
@@ -700,7 +702,7 @@ export const respondToSubstituteRequest = async (requestId: string, accept: bool
 export const getAllLeaves = async (): Promise<LeaveRequest[]> => {
     const q = query(collection(db, 'leave_requests'), orderBy('createdAt', 'desc'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LeaveRequest));
+    return snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as LeaveRequest));
 };
 
 // --- CAREER MOVEMENT Operations ---
@@ -714,20 +716,16 @@ export const addCareerRequest = async (request: Omit<CareerMovementRequest, 'id'
 };
 
 export const getMyCareerRequests = async (userId: string): Promise<CareerMovementRequest[]> => {
-    const q = query(collection(db, 'career_requests'));
+    const q = query(collection(db, 'career_requests'), where('userId', '==', userId));
     const snapshot = await getDocs(q);
-    
-    let requests = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() } as CareerMovementRequest))
-        .filter(req => req.userId === userId);
-
+    const requests = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as CareerMovementRequest));
     return requests.sort((a, b) => b.createdAt - a.createdAt);
 };
 
 export const getAllCareerRequests = async (): Promise<CareerMovementRequest[]> => {
     const q = query(collection(db, 'career_requests'), orderBy('createdAt', 'desc'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CareerMovementRequest));
+    return snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as CareerMovementRequest));
 };
 
 export const updateCareerRequestStatus = async (id: string, status: string) => {
@@ -736,17 +734,17 @@ export const updateCareerRequestStatus = async (id: string, status: string) => {
 
 export const calculateLoanDuration = async (userId: string): Promise<number> => {
     const q = query(collection(db, 'career_requests'), 
-        where('userId', '==', userId), 
-        where('type', '==', 'LOAN'),
-        where('status', '==', 'APPROVED')
+        where('userId', '==', userId)
     );
     const snapshot = await getDocs(q);
     let totalYears = 0;
     snapshot.forEach(doc => {
         const data = doc.data() as LoanRequest;
-        const start = new Date(data.startDate).getFullYear();
-        const end = new Date(data.endDate).getFullYear();
-        totalYears += (end - start) + 1; 
+        if (data.type === 'LOAN' && data.status === 'APPROVED') {
+            const start = new Date(data.startDate).getFullYear();
+            const end = new Date(data.endDate).getFullYear();
+            totalYears += (end - start) + 1;
+        }
     });
     return totalYears; 
 };
@@ -756,7 +754,7 @@ export const calculateLoanDuration = async (userId: string): Promise<number> => 
 export const getRepositoryItems = async (): Promise<RepositoryItem[]> => {
     const q = query(collection(db, 'repository_items'), orderBy('createdAt', 'desc'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RepositoryItem));
+    return snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as RepositoryItem));
 };
 
 export const addRepositoryItem = async (item: Omit<RepositoryItem, 'id' | 'createdAt'>): Promise<void> => {
@@ -777,11 +775,11 @@ export const requestFullText = async (request: Omit<RepositoryRequest, 'id' | 'c
 export const getMyRepoRequests = async (userId: string): Promise<RepositoryRequest[]> => {
     const q = query(
         collection(db, 'repository_requests'), 
-        where('itemAuthorId', '==', userId),
-        where('status', '==', 'PENDING')
+        where('itemAuthorId', '==', userId)
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RepositoryRequest));
+    const docs = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as RepositoryRequest));
+    return docs.filter(d => d.status === 'PENDING');
 };
 
 export const respondToRepoRequest = async (requestId: string, status: 'APPROVED' | 'REJECTED') => {
@@ -807,7 +805,7 @@ export const getRepoStats = async () => {
 export const getDeptForms = async (): Promise<DeptForm[]> => {
     const q = query(collection(db, 'dept_forms'), orderBy('updatedAt', 'desc'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DeptForm));
+    return snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as DeptForm));
 };
 
 export const addDeptForm = async (form: Omit<DeptForm, 'id'>): Promise<void> => {
@@ -827,7 +825,7 @@ export const deleteDeptForm = async (id: string): Promise<void> => {
 export const getCourses = async (): Promise<Course[]> => {
     const q = query(collection(db, 'courses'), orderBy('code', 'asc'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Course));
+    return snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as Course));
 };
 
 export const addCourse = async (course: Omit<Course, 'id' | 'createdAt'>): Promise<void> => {
