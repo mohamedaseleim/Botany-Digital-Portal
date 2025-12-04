@@ -161,7 +161,7 @@ const App: React.FC = () => {
             <Dashboard />
           } />
           
-          {/* (2) تم تمرير المستخدم للتحكم في صلاحيات التعديل */}
+          {/* ✅ تصحيح: تمرير user لصفحة StaffPortal */}
           <Route path="/staff" element={<StaffPortal user={user} />} />
           
           <Route path="/outgoing" element={<Outgoing user={user} />} />
@@ -172,7 +172,7 @@ const App: React.FC = () => {
           <Route path="/students" element={<StudentPortal user={user} />} />
           <Route path="/alumni" element={<AlumniPortal user={user} />} />
           
-          {/* (3) تم تمرير المستخدم للتحكم في حماية الصفحة */}
+          {/* ✅ تصحيح: تمرير user لصفحة UserManagement */}
           <Route path="/users" element={<UserManagement user={user} />} />
           
           <Route path="/pg-manager" element={<PostgraduateManager />} />
@@ -181,14 +181,14 @@ const App: React.FC = () => {
           <Route path="/greenhouse" element={<Greenhouse user={user} />} />
           <Route path="/events" element={<Events user={user} />} />
           
-          {/* (4) إضافة المسارات الجديدة */}
+          {/* ✅ تصحيح: تمرير user للصفحات الجديدة */}
           <Route path="/formation" element={<DepartmentFormation user={user} />} />
           <Route path="/annual-report" element={<AnnualReportPage user={user} />} />
-          <Route path="/research-plan" element={<ResearchPlanPage user={user} />} />
+          <Route path="/research-plan" element={<ResearchPlanPage user={user} />} /> 
           <Route path="/leaves" element={<LeaveManagement user={user} />} />
-          <Route path="/career-movements" element={<TransferManagement user={user} />} />
-          <Route path="/repository" element={<ScientificRepository user={user} />} />
-          {/* ---------------------- */}
+          <Route path="/career-movements" element={<TransferManagement user={user} />} /> 
+          <Route path="/repository" element={<ScientificRepository user={user} />} /> 
+          {/* ------------------------------------------ */}
 
           <Route path="/activity-log" element={<ActivityLogs />} />
           
