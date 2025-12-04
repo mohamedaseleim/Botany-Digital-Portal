@@ -17,7 +17,6 @@ import { Labs } from './pages/Labs';
 import { Greenhouse } from './pages/Greenhouse';
 import { Events } from './pages/Events';
 import { ActivityLogs } from './pages/ActivityLogs';
-import { FormsCenter } from './pages/FormsCenter';
 
 // --- (1) استيراد الصفحات الجديدة ---
 import { DepartmentFormation } from './pages/DepartmentFormation';
@@ -26,7 +25,8 @@ import { ResearchPlanPage } from './pages/ResearchPlan';
 import { LeaveManagement } from './pages/LeaveManagement';
 import { TransferManagement } from './pages/TransferManagement'; 
 import { ScientificRepository } from './pages/ScientificRepository';
-import { CourseCatalog } from './pages/CourseCatalog'; // (جديد) إضافة استيراد دليل المقررات
+import { CourseCatalog } from './pages/CourseCatalog'; 
+import { FormsCenter } from './pages/FormsCenter'; // (إضافة جديدة) استيراد مركز النماذج
 // -----------------------------------
 
 import { User, UserRole } from './types';
@@ -153,19 +153,17 @@ const App: React.FC = () => {
     );
   }
 
-  // التوجيه داخل التطبيق بعد تسجيل الدخول
   return (
     <HashRouter>
       <Layout user={user} onLogout={() => { setUser(null); setUsername(''); setPassword(''); }}>
         <Routes>
-          {/* الصفحة الرئيسية تختلف حسب دور المستخدم */}
           <Route path="/" element={
             user.role === UserRole.STUDENT_UG || user.role === UserRole.STUDENT_PG ? <StudentPortal user={user} /> : 
             user.role === UserRole.ALUMNI ? <AlumniPortal user={user} /> : 
             <Dashboard />
           } />
           
-          {/* (تعديل هام) تمرير user لصفحة StaffPortal لتفعيل صلاحيات التعديل */}
+          {/* ✅ تعديل: تمرير user لتفعيل صلاحيات التعديل */}
           <Route path="/staff" element={<StaffPortal user={user} />} />
           
           <Route path="/outgoing" element={<Outgoing user={user} />} />
@@ -176,7 +174,7 @@ const App: React.FC = () => {
           <Route path="/students" element={<StudentPortal user={user} />} />
           <Route path="/alumni" element={<AlumniPortal user={user} />} />
           
-          {/* (تعديل هام) تمرير user لصفحة UserManagement لحمايتها */}
+          {/* ✅ تعديل: تمرير user لحماية الصفحة */}
           <Route path="/users" element={<UserManagement user={user} />} />
           
           <Route path="/pg-manager" element={<PostgraduateManager />} />
@@ -185,20 +183,19 @@ const App: React.FC = () => {
           <Route path="/greenhouse" element={<Greenhouse user={user} />} />
           <Route path="/events" element={<Events user={user} />} />
           
-          {/* --- المسارات الجديدة التي تمت إضافتها --- */}
+          {/* --- ✅ إضافة: المسارات الجديدة مع تمرير user --- */}
           <Route path="/formation" element={<DepartmentFormation user={user} />} />
           <Route path="/annual-report" element={<AnnualReportPage user={user} />} />
-          <Route path="/research-plan" element={<ResearchPlanPage user={user} />} />
+          <Route path="/research-plan" element={<ResearchPlanPage user={user} />} /> 
           <Route path="/leaves" element={<LeaveManagement user={user} />} />
-          <Route path="/career-movements" element={<TransferManagement user={user} />} />
+          <Route path="/career-movements" element={<TransferManagement user={user} />} /> 
           <Route path="/repository" element={<ScientificRepository user={user} />} />
-          <Route path="/forms" element={<FormsCenter user={user} />} />
-          <Route path="/courses" element={<CourseCatalog user={user} />} /> {/* (جديد) تم إضافة مسار دليل المقررات */}
-          {/* --------------------------------------- */}
+          <Route path="/forms" element={<FormsCenter user={user} />} /> {/* إضافة المسار الجديد */}
+          <Route path="/courses" element={<CourseCatalog user={user} />} />
+          {/* ------------------------------------------- */}
 
           <Route path="/activity-log" element={<ActivityLogs />} />
           
-          {/* توجيه أي رابط غير معروف للصفحة الرئيسية */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </Layout>
