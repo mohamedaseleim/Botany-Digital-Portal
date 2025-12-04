@@ -119,6 +119,7 @@ export const deleteActivityLog = async (id: string): Promise<void> => {
 
 export const loginUser = async (username: string, password: string): Promise<User | null> => {
   try {
+    // 1. Staff
     const staffQ = query(collection(db, 'staff'), where('username', '==', username), where('password', '==', password));
     const staffSnap = await getDocs(staffQ);
     
@@ -136,6 +137,7 @@ export const loginUser = async (username: string, password: string): Promise<Use
       };
     }
 
+    // 2. Employees
     const empQ = query(collection(db, 'employees'), where('username', '==', username), where('password', '==', password));
     const empSnap = await getDocs(empQ);
     if (!empSnap.empty) {
@@ -144,6 +146,7 @@ export const loginUser = async (username: string, password: string): Promise<Use
       return { id: empSnap.docs[0].id, name: userDoc.name, role: UserRole.EMPLOYEE, details: userDoc.jobTitle };
     }
 
+    // 3. PG Students
     const pgQ = query(collection(db, 'pg_students'), where('username', '==', username), where('password', '==', password));
     const pgSnap = await getDocs(pgQ);
     if (!pgSnap.empty) {
@@ -152,6 +155,7 @@ export const loginUser = async (username: string, password: string): Promise<Use
       return { id: pgSnap.docs[0].id, name: userDoc.name, role: UserRole.STUDENT_PG, details: 'دراسات عليا' };
     }
 
+    // 4. UG Students
     const ugQ = query(collection(db, 'ug_students'), where('username', '==', username), where('password', '==', password));
     const ugSnap = await getDocs(ugQ);
     if (!ugSnap.empty) {
@@ -160,6 +164,7 @@ export const loginUser = async (username: string, password: string): Promise<Use
       return { id: ugSnap.docs[0].id, name: userDoc.name, role: UserRole.STUDENT_UG, details: 'طالب جامعي' };
     }
 
+    // 5. Alumni
     const alumniQ = query(collection(db, 'alumni'), where('username', '==', username), where('password', '==', password));
     const alumniSnap = await getDocs(alumniQ);
     if (!alumniSnap.empty) {
@@ -705,7 +710,7 @@ export const getAllLeaves = async (): Promise<LeaveRequest[]> => {
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LeaveRequest));
 };
 
-// --- CAREER MOVEMENT Operations ---
+// --- CAREER MOVEMENT Operations (UPDATED FIX) ---
 
 export const addCareerRequest = async (request: Omit<CareerMovementRequest, 'id' | 'createdAt'>): Promise<void> => {
     await addDoc(collection(db, 'career_requests'), {
@@ -715,10 +720,17 @@ export const addCareerRequest = async (request: Omit<CareerMovementRequest, 'id'
     });
 };
 
+// *FIXED*: Fetch all then filter in JS to avoid index error
 export const getMyCareerRequests = async (userId: string): Promise<CareerMovementRequest[]> => {
-    const q = query(collection(db, 'career_requests'), where('userId', '==', userId), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, 'career_requests')); // Fetch all to ensure no index error for now
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CareerMovementRequest));
+    
+    // Filter and Sort Client Side
+    let requests = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as CareerMovementRequest))
+        .filter(req => req.userId === userId);
+
+    return requests.sort((a, b) => b.createdAt - a.createdAt);
 };
 
 export const getAllCareerRequests = async (): Promise<CareerMovementRequest[]> => {

@@ -4,7 +4,7 @@ import {
     FileText, UserCheck, Plane, Baby, Stethoscope, MapPin, Phone, 
     UploadCloud, Loader2, X, User, Edit, Trash2, Save
 } from 'lucide-react';
-import { User as UserType, LeaveRequest, LeaveType, StaffMember } from '../types';
+import { User as UserType, LeaveRequest, LeaveType, StaffMember, UserRole } from '../types';
 import { 
     addLeaveRequest, getMyLeaves, getSubstituteRequests, respondToSubstituteRequest, 
     getStaff, uploadFileToDrive, logActivity 
@@ -56,14 +56,20 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({ user }) => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [leaves, subs, staff] = await Promise.all([
+            // جلب البيانات بالتوازي
+            const [leaves, subs, allStaff] = await Promise.all([
                 getMyLeaves(user.id),
                 getSubstituteRequests(user.id),
                 getStaff()
             ]);
+            
             setMyLeaves(leaves);
             setSubRequests(subs);
-            setStaffList(staff.filter(s => s.id !== user.id));
+            
+            // تصفية القائمة لاستبعاد المستخدم الحالي (لا يمكن أن يكون بديلاً لنفسه)
+            const otherStaff = allStaff.filter(s => s.id !== user.id);
+            setStaffList(otherStaff);
+
         } catch (error) {
             console.error("Error fetching data:", error);
         }
@@ -126,7 +132,7 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({ user }) => {
             spouseJob: req.spouseJob || '',
             country: req.country || '',
         });
-        setFiles([]); // Reset files on edit (or handle differently if needed)
+        setFiles([]); 
         setActiveTab('NEW');
     };
 
@@ -146,7 +152,7 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({ user }) => {
         const days = calculateDays();
         if (days <= 0) { alert('تاريخ النهاية يجب أن يكون بعد البداية'); return; }
         
-        // Validation for Casual Leave (Skip check if editing same request)
+        // Validation for Casual Leave
         if (formData.type === 'CASUAL' && !isEditing) {
             const usedCasual = myLeaves.filter(l => l.type === 'CASUAL' && l.status === 'APPROVED').reduce((acc, curr) => acc + curr.daysCount, 0);
             if (usedCasual + days > 7) {
@@ -301,7 +307,7 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({ user }) => {
                             className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:border-green-500 bg-white"
                             value={formData.type}
                             onChange={e => setFormData({...formData, type: e.target.value})}
-                            disabled={isEditing} // Prevent changing type on edit to avoid complexity
+                            disabled={isEditing} 
                         >
                             <option value="CASUAL">إجازة عارضة</option>
                             <option value="ANNUAL">إجازة اعتيادية</option>
@@ -336,12 +342,20 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({ user }) => {
                         className="w-full p-3 border border-purple-200 rounded-lg outline-none focus:border-purple-500 bg-white"
                         value={formData.substituteId}
                         onChange={e => setFormData({...formData, substituteId: e.target.value})}
-                        required={formData.type !== 'CHILD_CARE' && formData.type !== 'SPOUSE'} // Not required for long term leaves usually, but depends on rules
+                        required={formData.type !== 'CHILD_CARE' && formData.type !== 'SPOUSE'}
                     >
                         <option value="">-- اختر الزميل --</option>
-                        {staffList.map(s => <option key={s.id} value={s.id}>{s.name} ({s.rank})</option>)}
+                        {/* عرض رسالة إذا كانت القائمة فارغة */}
+                        {staffList.length === 0 ? (
+                             <option disabled>لا يوجد زملاء مسجلين حالياً</option>
+                        ) : (
+                             staffList.map(s => <option key={s.id} value={s.id}>{s.name} ({s.rank})</option>)
+                        )}
                     </select>
-                    <p className="text-xs text-purple-600 mt-2">* سيتم إرسال إشعار للزميل للموافقة على تغطية محاضراتك.</p>
+                    <p className="text-xs text-purple-600 mt-2 flex justify-between">
+                        <span>* سيتم إرسال إشعار للزميل للموافقة على تغطية محاضراتك.</span>
+                        {staffList.length === 0 && <span className="text-red-500 font-bold">تنبيه: يجب إضافة أعضاء هيئة تدريس آخرين من لوحة التحكم أولاً.</span>}
+                    </p>
                 </div>
 
                 {/* Dynamic Fields */}
