@@ -17,12 +17,16 @@ import { Labs } from './pages/Labs';
 import { Greenhouse } from './pages/Greenhouse';
 import { Events } from './pages/Events';
 import { ActivityLogs } from './pages/ActivityLogs';
+
+// --- (1) استيراد الصفحات الجديدة ---
 import { DepartmentFormation } from './pages/DepartmentFormation';
 import { AnnualReportPage } from './pages/AnnualReport';
 import { ResearchPlanPage } from './pages/ResearchPlan'; 
 import { LeaveManagement } from './pages/LeaveManagement';
 import { TransferManagement } from './pages/TransferManagement'; 
-import { ScientificRepository } from './pages/ScientificRepository'; // (جديد) استيراد المستودع الرقمي
+import { ScientificRepository } from './pages/ScientificRepository'; 
+// -----------------------------------
+
 import { User, UserRole } from './types';
 import { loginUser, seedInitialData } from './services/dbService';
 import { Sprout, Users, Key, Loader2, ArrowLeft } from 'lucide-react';
@@ -69,11 +73,13 @@ const App: React.FC = () => {
       }
   };
 
+  // شاشة تسجيل الدخول
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center p-4" dir="rtl">
         <div className="bg-white p-8 rounded-2xl shadow-xl max-w-4xl w-full border border-green-100 flex flex-col md:flex-row gap-8">
           
+          {/* القسم الأيمن - الشعار والترحيب */}
           <div className="md:w-1/2 flex flex-col items-center justify-center text-center border-b md:border-b-0 md:border-l border-gray-100 pb-6 md:pb-0 md:pl-6">
             <div className="bg-green-100 p-6 rounded-full mb-6 animate-pulse">
               <Sprout className="w-16 h-16 text-green-700" />
@@ -85,6 +91,7 @@ const App: React.FC = () => {
             </p>
           </div>
           
+          {/* القسم الأيسر - نموذج الدخول */}
           <div className="md:w-1/2 flex flex-col justify-center">
             <h3 className="text-lg font-bold text-gray-700 mb-6 text-center border-b pb-2">تسجيل الدخول للبوابة</h3>
             
@@ -154,6 +161,7 @@ const App: React.FC = () => {
             <Dashboard />
           } />
           
+          {/* (2) تم تمرير المستخدم للتحكم في صلاحيات التعديل */}
           <Route path="/staff" element={<StaffPortal user={user} />} />
           
           <Route path="/outgoing" element={<Outgoing user={user} />} />
@@ -163,21 +171,25 @@ const App: React.FC = () => {
           <Route path="/search" element={<Search user={user} />} />
           <Route path="/students" element={<StudentPortal user={user} />} />
           <Route path="/alumni" element={<AlumniPortal user={user} />} />
-          <Route path="/users" element={<UserManagement />} />
+          
+          {/* (3) تم تمرير المستخدم للتحكم في حماية الصفحة */}
+          <Route path="/users" element={<UserManagement user={user} />} />
+          
           <Route path="/pg-manager" element={<PostgraduateManager />} />
           <Route path="/inventory" element={<Inventory user={user} />} />
           <Route path="/labs" element={<Labs user={user} />} />
           <Route path="/greenhouse" element={<Greenhouse user={user} />} />
           <Route path="/events" element={<Events user={user} />} />
           
-          {/* المسارات الجديدة المضافة مؤخراً */}
+          {/* (4) إضافة المسارات الجديدة */}
           <Route path="/formation" element={<DepartmentFormation user={user} />} />
           <Route path="/annual-report" element={<AnnualReportPage user={user} />} />
           <Route path="/research-plan" element={<ResearchPlanPage user={user} />} />
           <Route path="/leaves" element={<LeaveManagement user={user} />} />
           <Route path="/career-movements" element={<TransferManagement user={user} />} />
-          <Route path="/repository" element={<ScientificRepository user={user} />} /> {/* (جديد) مسار المستودع */}
-          
+          <Route path="/repository" element={<ScientificRepository user={user} />} />
+          {/* ---------------------- */}
+
           <Route path="/activity-log" element={<ActivityLogs />} />
           
           <Route path="*" element={<Navigate to="/" />} />

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Users, GraduationCap, UserPlus, Edit, Trash2, Key, Save, X, BookOpen, Briefcase, BadgeCheck, Phone, Mail, MapPin, MessageCircle } from 'lucide-react';
+import { Users, GraduationCap, UserPlus, Edit, Trash2, Key, Save, X, BookOpen, Briefcase, BadgeCheck, Phone, Mail, MapPin, MessageCircle, ShieldAlert } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
-import { StaffMember, PostgraduateStudent, UndergraduateStudent, AlumniMember, Employee, StaffSubRole } from '../types';
+import { StaffMember, PostgraduateStudent, UndergraduateStudent, AlumniMember, Employee, StaffSubRole, User, UserRole } from '../types';
 import { 
   getStaff, getPGStudents, getUGStudents, getAlumni, getEmployees,
   addStaff, updateStaff, deleteStaff,
@@ -12,7 +12,28 @@ import {
   logActivity
 } from '../services/dbService';
 
-export const UserManagement: React.FC = () => {
+// تعريف الخصائص لاستقبال المستخدم الحالي
+interface UserManagementProps {
+    user: User;
+}
+
+export const UserManagement: React.FC<UserManagementProps> = ({ user }) => {
+  // --- (تعديل) حماية الصفحة: التحقق من أن المستخدم هو ADMIN ---
+  if (user.role !== UserRole.ADMIN) {
+      return (
+          <div className="flex flex-col items-center justify-center h-[60vh] animate-in fade-in">
+              <div className="bg-red-50 p-6 rounded-full mb-4">
+                  <ShieldAlert className="w-12 h-12 text-red-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">وصول غير مصرح به</h2>
+              <p className="text-gray-500 text-center max-w-md">
+                  عذراً، هذه الصفحة مخصصة لمدير النظام فقط. لا تملك الصلاحيات الكافية لعرض أو تعديل بيانات المستخدمين.
+              </p>
+          </div>
+      );
+  }
+  // ------------------------------------------------------------
+
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<'STAFF' | 'PG' | 'UG' | 'ALUMNI' | 'EMPLOYEE'>('STAFF');
   const [loading, setLoading] = useState(false);
@@ -30,7 +51,7 @@ export const UserManagement: React.FC = () => {
   // Unified Form State
   const [formData, setFormData] = useState({
     name: '',
-    // Contact Info (New)
+    // Contact Info
     email: '',
     phone: '',
     whatsapp: '',
@@ -139,7 +160,6 @@ export const UserManagement: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // بيانات الاتصال المشتركة
     const contactData = {
         email: formData.email,
         phone: formData.phone,
