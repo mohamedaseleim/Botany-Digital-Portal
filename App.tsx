@@ -19,8 +19,9 @@ import { Events } from './pages/Events';
 import { ActivityLogs } from './pages/ActivityLogs';
 import { DepartmentFormation } from './pages/DepartmentFormation';
 import { AnnualReportPage } from './pages/AnnualReport';
-import { ResearchPlanPage } from './pages/ResearchPlan'; 
-import { LeaveManagement } from './pages/LeaveManagement'; // 1. استيراد الصفحة الجديدة
+import { ResearchPlanPage } from './pages/ResearchPlan';
+import { LeaveManagement } from './pages/LeaveManagement';
+import { TransferManagement } from './pages/TransferManagement'; // استيراد الصفحة الجديدة
 import { User, UserRole } from './types';
 import { loginUser, seedInitialData } from './services/dbService';
 import { Sprout, Users, Key, Loader2, ArrowLeft } from 'lucide-react';
@@ -168,7 +169,8 @@ const App: React.FC = () => {
           <Route path="/formation" element={<DepartmentFormation user={user} />} />
           <Route path="/annual-report" element={<AnnualReportPage user={user} />} />
           <Route path="/research-plan" element={<ResearchPlanPage user={user} />} />
-          <Route path="/leaves" element={<LeaveManagement user={user} />} /> {/* 2. إضافة المسار الجديد */}
+          <Route path="/leaves" element={<LeaveManagement user={user} />} />
+          <Route path="/career-movements" element={<TransferManagement user={user} />} /> {/* المسار الجديد للنقل والندب والإعارة */}
           <Route path="/activity-log" element={<ActivityLogs />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>

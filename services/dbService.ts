@@ -21,7 +21,7 @@ import {
   UserRole, Asset, Announcement, ScheduleItem, LabBooking, Lab, LabClass, 
   GreenhousePlot, GreenhouseHistoryItem, DeptEvent, ActivityLogItem, Employee,
   DeptCouncilFormation, DeptCommitteeFormation, AnnualReport, ResearchPlan, ResearchProposal,
-  LeaveRequest, LeaveStatus 
+  LeaveRequest, LeaveStatus, CareerMovementRequest, LoanRequest
 } from '../types';
 
 // --- GOOGLE DRIVE UPLOAD SERVICE ---
@@ -612,13 +612,11 @@ export const getAllAnnualReports = async (year: string): Promise<AnnualReport[]>
 // --- RESEARCH PLAN Operations ---
 
 export const getActiveResearchPlan = async (): Promise<ResearchPlan | null> => {
-    // Simulate getting the active plan
     const q = query(collection(db, 'research_plans'), where('status', '==', 'ACTIVE'));
     const snapshot = await getDocs(q);
     if (!snapshot.empty) {
         return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as ResearchPlan;
     }
-    // Seed if empty for demo purposes
     await seedResearchPlan();
     return getActiveResearchPlan();
 };
@@ -642,23 +640,20 @@ export const updateProposalStatus = async (id: string, status: string, notes?: s
 
 // --- LEAVE MANAGEMENT Operations ---
 
-// إضافة طلب إجازة
 export const addLeaveRequest = async (request: Omit<LeaveRequest, 'id' | 'createdAt' | 'status'>): Promise<void> => {
     await addDoc(collection(db, 'leave_requests'), {
         ...request,
         createdAt: Date.now(),
-        status: request.substituteId ? 'PENDING_SUBSTITUTE' : 'PENDING_HEAD' // إذا لا يوجد بديل (مثل رعاية الطفل)، تذهب للمدير مباشرة
+        status: request.substituteId ? 'PENDING_SUBSTITUTE' : 'PENDING_HEAD'
     });
 };
 
-// جلب إجازاتي
 export const getMyLeaves = async (userId: string): Promise<LeaveRequest[]> => {
     const q = query(collection(db, 'leave_requests'), where('userId', '==', userId), orderBy('createdAt', 'desc'));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LeaveRequest));
 };
 
-// جلب الطلبات التي تتطلب موافقتي كبديل
 export const getSubstituteRequests = async (userId: string): Promise<LeaveRequest[]> => {
     const q = query(
         collection(db, 'leave_requests'), 
@@ -669,22 +664,65 @@ export const getSubstituteRequests = async (userId: string): Promise<LeaveReques
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LeaveRequest));
 };
 
-// الرد على طلب البديل (قبول/رفض)
 export const respondToSubstituteRequest = async (requestId: string, accept: boolean, reason?: string) => {
     const updateData = {
         substituteStatus: accept ? 'ACCEPTED' : 'DECLINED',
-        status: accept ? 'PENDING_HEAD' : 'REJECTED', // إذا رفض البديل، يرفض الطلب أو يعاد للمستخدم (هنا سنرفضه للتبسيط)
+        status: accept ? 'PENDING_HEAD' : 'REJECTED', 
         substituteRejectionReason: reason || ''
     };
     await updateDoc(doc(db, 'leave_requests', requestId), updateData);
 };
 
-// جلب جميع الإجازات (للمدير)
 export const getAllLeaves = async (): Promise<LeaveRequest[]> => {
     const q = query(collection(db, 'leave_requests'), orderBy('createdAt', 'desc'));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LeaveRequest));
 };
+
+// --- CAREER MOVEMENT Operations (NEW) ---
+
+export const addCareerRequest = async (request: Omit<CareerMovementRequest, 'id' | 'createdAt'>): Promise<void> => {
+    await addDoc(collection(db, 'career_requests'), {
+        ...request,
+        createdAt: Date.now(),
+        status: 'PENDING_DEPT'
+    });
+};
+
+export const getMyCareerRequests = async (userId: string): Promise<CareerMovementRequest[]> => {
+    const q = query(collection(db, 'career_requests'), where('userId', '==', userId), orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CareerMovementRequest));
+};
+
+export const getAllCareerRequests = async (): Promise<CareerMovementRequest[]> => {
+    const q = query(collection(db, 'career_requests'), orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CareerMovementRequest));
+};
+
+export const updateCareerRequestStatus = async (id: string, status: string) => {
+    await updateDoc(doc(db, 'career_requests', id), { status });
+};
+
+export const calculateLoanDuration = async (userId: string): Promise<number> => {
+    // This is a simplified logic. In a real scenario, fetch approved LOAN requests and sum durations.
+    const q = query(collection(db, 'career_requests'), 
+        where('userId', '==', userId), 
+        where('type', '==', 'LOAN'),
+        where('status', '==', 'APPROVED')
+    );
+    const snapshot = await getDocs(q);
+    let totalYears = 0;
+    snapshot.forEach(doc => {
+        const data = doc.data() as LoanRequest;
+        const start = new Date(data.startDate).getFullYear();
+        const end = new Date(data.endDate).getFullYear();
+        totalYears += (end - start) + 1; // Approximation
+    });
+    return totalYears; 
+};
+
 
 // --- Helper: Seed Research Plan ---
 export const seedResearchPlan = async () => {

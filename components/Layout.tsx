@@ -24,7 +24,8 @@ import {
   Network,
   FileText,
   Target,
-  CalendarDays // استيراد أيقونة الإجازات
+  CalendarDays,
+  Plane // استيراد أيقونة النقل والندب والإعارة
 } from 'lucide-react';
 import { User, UserRole } from '../types';
 
@@ -40,7 +41,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
 
   const isActive = (path: string) => location.pathname === path;
 
-  // قائمة الروابط الكاملة
+  // قائمة الروابط الكاملة بالترتيب المطلوب
   const allNavItems = [
     { 
       path: '/', 
@@ -60,14 +61,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       icon: FileInput, 
       roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.DATA_ENTRY] 
     },
-    // --- رابط إدارة الإجازات (جديد) ---
-    { 
-      path: '/leaves', 
-      label: 'إدارة الإجازات', 
-      icon: CalendarDays, 
-      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.EMPLOYEE] 
-    },
-    // --------------------------------
     { 
       path: '/councils', 
       label: 'مجالس القسم', 
@@ -91,12 +84,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       label: 'الخطة البحثية للقسم', 
       icon: Target, 
       roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.STUDENT_PG, UserRole.STUDENT_UG] 
-    },
-    { 
-      path: '/annual-report', 
-      label: 'التقرير السنوي', 
-      icon: FileText, 
-      roles: [UserRole.ADMIN, UserRole.STAFF] 
     },
     { 
       path: '/events', 
@@ -134,6 +121,26 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       icon: UserCircle, 
       roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.STUDENT_PG, UserRole.STUDENT_UG] 
     },
+    { 
+      path: '/annual-report', 
+      label: 'التقرير السنوي', 
+      icon: FileText, 
+      roles: [UserRole.ADMIN, UserRole.STAFF] 
+    },
+    { 
+      path: '/leaves', 
+      label: 'إدارة الإجازات', 
+      icon: CalendarDays, 
+      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.EMPLOYEE] 
+    },
+    // --- رابط النقل والندب والإعارة (جديد) ---
+    { 
+      path: '/career-movements', 
+      label: 'إدارة النقل والندب والإعارة', 
+      icon: Plane, 
+      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.EMPLOYEE] 
+    },
+    // ---------------------------------------
     { 
       path: '/students', 
       label: 'بوابة الطلاب', 
