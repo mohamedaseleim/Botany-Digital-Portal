@@ -42,7 +42,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
 
   const isActive = (path: string) => location.pathname === path;
 
-  // قائمة الروابط بالترتيب الجديد المطلوب
+  // قائمة الروابط الكاملة
   const allNavItems = [
     { 
       path: '/', 
@@ -87,6 +87,24 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.STUDENT_PG, UserRole.STUDENT_UG] 
     },
     { 
+      path: '/annual-report', 
+      label: 'التقرير السنوي', 
+      icon: FileText, 
+      roles: [UserRole.ADMIN, UserRole.STAFF] 
+    },
+    { 
+      path: '/leaves', 
+      label: 'إدارة الإجازات', 
+      icon: CalendarDays, 
+      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.EMPLOYEE] 
+    },
+    { 
+      path: '/career-movements', 
+      label: 'النقل والندب والإعارة', 
+      icon: Plane, 
+      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.EMPLOYEE] 
+    },
+    { 
       path: '/events', 
       label: 'أنشطة وفعاليات القسم', 
       icon: Megaphone, 
@@ -104,6 +122,14 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       icon: Library, 
       roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.STUDENT_PG, UserRole.STUDENT_UG, UserRole.ALUMNI, UserRole.EMPLOYEE] 
     },
+    // --- رابط دليل المقررات الدراسية (جديد) ---
+    { 
+      path: '/courses', 
+      label: 'دليل المقررات الدراسية', 
+      icon: BookOpen, 
+      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.STUDENT_PG, UserRole.STUDENT_UG, UserRole.DATA_ENTRY] 
+    },
+    // ----------------------------------------
     { 
       path: '/inventory', 
       label: 'سجل العهدة', 
@@ -129,27 +155,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.STUDENT_PG, UserRole.STUDENT_UG] 
     },
     { 
-      path: '/annual-report', 
-      label: 'التقرير السنوي', 
-      icon: FileText, 
-      roles: [UserRole.ADMIN, UserRole.STAFF] 
-    },
-    { 
-      path: '/leaves', 
-      label: 'إدارة الإجازات', 
-      icon: CalendarDays, 
-      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.EMPLOYEE] 
-    },
-    { 
-      path: '/career-movements', 
-      label: 'إدارة النقل والندب والإعارة', 
-      icon: Plane, 
-      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.EMPLOYEE] 
-    },
-    { 
       path: '/students', 
       label: 'بوابة الطلاب', 
-      icon: BookOpen, 
+      icon: GraduationCap, // تم تغيير الأيقونة لتناسب الطلاب
       roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.STUDENT_PG, UserRole.STUDENT_UG] 
     },
     { 

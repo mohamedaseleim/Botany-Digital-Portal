@@ -22,7 +22,7 @@ import {
   GreenhousePlot, GreenhouseHistoryItem, DeptEvent, ActivityLogItem, Employee,
   DeptCouncilFormation, DeptCommitteeFormation, AnnualReport, ResearchPlan, ResearchProposal,
   LeaveRequest, LeaveStatus, CareerMovementRequest, LoanRequest,
-  RepositoryItem, RepositoryRequest
+  RepositoryItem, RepositoryRequest, Course // استيراد Course
 } from '../types';
 
 // --- GOOGLE DRIVE UPLOAD SERVICE ---
@@ -119,7 +119,6 @@ export const deleteActivityLog = async (id: string): Promise<void> => {
 
 export const loginUser = async (username: string, password: string): Promise<User | null> => {
   try {
-    // 1. Staff
     const staffQ = query(collection(db, 'staff'), where('username', '==', username), where('password', '==', password));
     const staffSnap = await getDocs(staffQ);
     
@@ -137,7 +136,6 @@ export const loginUser = async (username: string, password: string): Promise<Use
       };
     }
 
-    // 2. Employees
     const empQ = query(collection(db, 'employees'), where('username', '==', username), where('password', '==', password));
     const empSnap = await getDocs(empQ);
     if (!empSnap.empty) {
@@ -146,7 +144,6 @@ export const loginUser = async (username: string, password: string): Promise<Use
       return { id: empSnap.docs[0].id, name: userDoc.name, role: UserRole.EMPLOYEE, details: userDoc.jobTitle };
     }
 
-    // 3. PG Students
     const pgQ = query(collection(db, 'pg_students'), where('username', '==', username), where('password', '==', password));
     const pgSnap = await getDocs(pgQ);
     if (!pgSnap.empty) {
@@ -155,7 +152,6 @@ export const loginUser = async (username: string, password: string): Promise<Use
       return { id: pgSnap.docs[0].id, name: userDoc.name, role: UserRole.STUDENT_PG, details: 'دراسات عليا' };
     }
 
-    // 4. UG Students
     const ugQ = query(collection(db, 'ug_students'), where('username', '==', username), where('password', '==', password));
     const ugSnap = await getDocs(ugQ);
     if (!ugSnap.empty) {
@@ -164,7 +160,6 @@ export const loginUser = async (username: string, password: string): Promise<Use
       return { id: ugSnap.docs[0].id, name: userDoc.name, role: UserRole.STUDENT_UG, details: 'طالب جامعي' };
     }
 
-    // 5. Alumni
     const alumniQ = query(collection(db, 'alumni'), where('username', '==', username), where('password', '==', password));
     const alumniSnap = await getDocs(alumniQ);
     if (!alumniSnap.empty) {
@@ -710,7 +705,7 @@ export const getAllLeaves = async (): Promise<LeaveRequest[]> => {
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LeaveRequest));
 };
 
-// --- CAREER MOVEMENT Operations (UPDATED FIX) ---
+// --- CAREER MOVEMENT Operations ---
 
 export const addCareerRequest = async (request: Omit<CareerMovementRequest, 'id' | 'createdAt'>): Promise<void> => {
     await addDoc(collection(db, 'career_requests'), {
@@ -720,17 +715,10 @@ export const addCareerRequest = async (request: Omit<CareerMovementRequest, 'id'
     });
 };
 
-// *FIXED*: Fetch all then filter in JS to avoid index error
 export const getMyCareerRequests = async (userId: string): Promise<CareerMovementRequest[]> => {
-    const q = query(collection(db, 'career_requests')); // Fetch all to ensure no index error for now
+    const q = query(collection(db, 'career_requests'), where('userId', '==', userId), orderBy('createdAt', 'desc'));
     const snapshot = await getDocs(q);
-    
-    // Filter and Sort Client Side
-    let requests = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() } as CareerMovementRequest))
-        .filter(req => req.userId === userId);
-
-    return requests.sort((a, b) => b.createdAt - a.createdAt);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CareerMovementRequest));
 };
 
 export const getAllCareerRequests = async (): Promise<CareerMovementRequest[]> => {
@@ -809,6 +797,68 @@ export const getRepoStats = async () => {
         papers: items.filter(i => i.type.includes('PAPER')).length,
         books: items.filter(i => i.type === 'BOOK').length
     };
+};
+
+// --- COURSE CATALOG Operations ---
+
+export const getCourses = async (): Promise<Course[]> => {
+    const q = query(collection(db, 'courses'), orderBy('code', 'asc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Course));
+};
+
+export const addCourse = async (course: Omit<Course, 'id' | 'createdAt'>): Promise<void> => {
+    await addDoc(collection(db, 'courses'), {
+        ...course,
+        createdAt: Date.now()
+    });
+};
+
+export const updateCourse = async (id: string, updates: Partial<Course>): Promise<void> => {
+    await updateDoc(doc(db, 'courses', id), updates);
+};
+
+export const deleteCourse = async (id: string): Promise<void> => {
+    await deleteDoc(doc(db, 'courses', id));
+};
+
+// Helper to Seed some courses for demo
+export const seedCourses = async () => {
+    const check = await getDocs(collection(db, 'courses'));
+    if (!check.empty) return;
+    
+    console.log("Seeding Courses...");
+    const batch = writeBatch(db);
+    
+    const courses: Omit<Course, 'id' | 'createdAt'>[] = [
+        {
+            code: 'BOT101', nameAr: 'نبات عام (مورفولوجي وتشريح)', nameEn: 'General Botany',
+            level: 'Level 1', semester: 'First', division: 'General',
+            creditHours: 3, lectureHours: 2, labHours: 1,
+            coordinator: 'أ.د/ رئيس القسم', type: 'Compulsory'
+        },
+        {
+            code: 'PP301', nameAr: 'أمراض نبات فطرية', nameEn: 'Fungal Plant Pathology',
+            level: 'Level 3', semester: 'First', division: 'Plant Pathology',
+            creditHours: 3, lectureHours: 2, labHours: 1,
+            prerequisiteName: 'BOT101',
+            coordinator: 'د. محمد علي', type: 'Compulsory',
+            description: 'دراسة الفطريات الممرضة للنبات وطرق مكافحتها.'
+        },
+        {
+            code: 'PP605', nameAr: 'فسيولوجيا التطفل', nameEn: 'Physiology of Parasitism',
+            level: 'MSc', creditHours: 3,
+            coordinator: 'أ.د/ إبراهيم حسن', type: 'Compulsory',
+            description: 'دراسة العلاقة بين العائل والطفيل وإفراز الإنزيمات.'
+        }
+    ];
+
+    courses.forEach(c => {
+        const ref = doc(collection(db, 'courses'));
+        batch.set(ref, { ...c, createdAt: Date.now() });
+    });
+    
+    await batch.commit();
 };
 
 // --- Helper: Seed Research Plan ---
