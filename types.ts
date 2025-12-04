@@ -555,14 +555,10 @@ export interface RepositoryItem {
     abstract?: string;
     keywords?: string[];
     publicationYear: string;
-    specialization?: string; // التخصص الدقيق
-    
-    // Authors / Supervisors
-    authorIds?: string[]; // ربط مع أعضاء القسم
-    authorNames?: string; // نصي (للمشاركين من خارج القسم)
-    supervisors?: string; // للرسائل
-
-    // Publication Info
+    specialization?: string;
+    authorIds?: string[];
+    authorNames?: string;
+    supervisors?: string;
     journalName?: string;
     conferenceName?: string;
     volume?: string;
@@ -571,18 +567,13 @@ export interface RepositoryItem {
     doi?: string;
     isbn?: string;
     publisher?: string;
-    
-    // Thesis Info
     degree?: string;
     grantDate?: string;
-    shelfLocation?: string; // مكان النسخة الورقية
-
-    // Files & Visibility
-    coverUrl?: string; // للكتب
-    fileUrl?: string; // الملف العام (ملخص أو كامل)
-    privateFileUrl?: string; // الملف الكامل (للمؤلف والإدارة فقط)
+    shelfLocation?: string;
+    coverUrl?: string;
+    fileUrl?: string;
+    privateFileUrl?: string;
     fileVisibility: 'PUBLIC' | 'PRIVATE' | 'AUTHOR_ONLY';
-    
     createdAt: number;
     addedBy: string;
 }
@@ -604,7 +595,7 @@ export interface RepositoryRequest {
     createdAt: number;
 }
 
-// --- Course Catalog Types (دليل المقررات - جديد) ---
+// --- Course Catalog Types (دليل المقررات) ---
 
 export type CourseLevel = 'Level 1' | 'Level 2' | 'Level 3' | 'Level 4' | 'Diploma' | 'MSc' | 'PhD';
 export type CourseSemester = 'First' | 'Second' | 'Summer';
@@ -635,6 +626,23 @@ export interface Course {
     createdAt: number;
 }
 
+// --- Forms & Templates Center (New) ---
+
+export type FormCategory = 'ADMIN_FINANCE' | 'STUDENT_AFFAIRS' | 'POSTGRAD_RESEARCH' | 'QUALITY';
+
+export interface DeptForm {
+    id: string;
+    title: string;
+    category: FormCategory;
+    description?: string;
+    sourceFileUrl?: string; // Word (.docx)
+    previewFileUrl?: string; // PDF
+    updatedAt: string;
+    isActive: boolean;
+    isFillableOnline?: boolean; // If true, redirects to a web form
+    fillableLink?: string; // e.g., '/leaves'
+}
+
 export interface DashboardStats {
   totalIncoming: number;
   totalOutgoing: number;
@@ -642,7 +650,6 @@ export interface DashboardStats {
   totalCommittees: number;
   todayCount: number;
   unansweredCount: number;
-  // Portal Stats
   totalStaff: number;
   totalStudentsPG: number;
   totalAlumni: number;

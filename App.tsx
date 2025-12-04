@@ -17,6 +17,7 @@ import { Labs } from './pages/Labs';
 import { Greenhouse } from './pages/Greenhouse';
 import { Events } from './pages/Events';
 import { ActivityLogs } from './pages/ActivityLogs';
+import { FormsCenter } from './pages/FormsCenter';
 
 // --- (1) استيراد الصفحات الجديدة ---
 import { DepartmentFormation } from './pages/DepartmentFormation';
@@ -191,6 +192,7 @@ const App: React.FC = () => {
           <Route path="/leaves" element={<LeaveManagement user={user} />} />
           <Route path="/career-movements" element={<TransferManagement user={user} />} />
           <Route path="/repository" element={<ScientificRepository user={user} />} />
+          <Route path="/forms" element={<FormsCenter user={user} />} />
           <Route path="/courses" element={<CourseCatalog user={user} />} /> {/* (جديد) تم إضافة مسار دليل المقررات */}
           {/* --------------------------------------- */}
 

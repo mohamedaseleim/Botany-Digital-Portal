@@ -22,7 +22,7 @@ import {
   GreenhousePlot, GreenhouseHistoryItem, DeptEvent, ActivityLogItem, Employee,
   DeptCouncilFormation, DeptCommitteeFormation, AnnualReport, ResearchPlan, ResearchProposal,
   LeaveRequest, LeaveStatus, CareerMovementRequest, LoanRequest,
-  RepositoryItem, RepositoryRequest, Course // استيراد Course
+  RepositoryItem, RepositoryRequest, Course, DeptForm // استيراد الأنواع الجديدة
 } from '../types';
 
 // --- GOOGLE DRIVE UPLOAD SERVICE ---
@@ -624,7 +624,6 @@ export const getAllResearchPlans = async (): Promise<ResearchPlan[]> => {
 };
 
 export const addResearchPlan = async (plan: Omit<ResearchPlan, 'id'>): Promise<void> => {
-    // If new plan is active, archive previous active plans (optional but good practice)
     if (plan.status === 'ACTIVE') {
         const active = await getActiveResearchPlan();
         if (active) await archiveResearchPlan(active.id);
@@ -651,7 +650,6 @@ export const getProposals = async (): Promise<ResearchProposal[]> => {
 };
 
 export const addProposal = async (proposal: Omit<ResearchProposal, 'id' | 'createdAt'>): Promise<void> => {
-    // Sanitization: Remove undefined values to prevent Firebase errors
     const cleanProposal = JSON.parse(JSON.stringify(proposal));
     
     await addDoc(collection(db, 'research_proposals'), {
@@ -716,9 +714,14 @@ export const addCareerRequest = async (request: Omit<CareerMovementRequest, 'id'
 };
 
 export const getMyCareerRequests = async (userId: string): Promise<CareerMovementRequest[]> => {
-    const q = query(collection(db, 'career_requests'), where('userId', '==', userId), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, 'career_requests'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CareerMovementRequest));
+    
+    let requests = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as CareerMovementRequest))
+        .filter(req => req.userId === userId);
+
+    return requests.sort((a, b) => b.createdAt - a.createdAt);
 };
 
 export const getAllCareerRequests = async (): Promise<CareerMovementRequest[]> => {
@@ -799,6 +802,26 @@ export const getRepoStats = async () => {
     };
 };
 
+// --- FORMS CENTER Operations ---
+
+export const getDeptForms = async (): Promise<DeptForm[]> => {
+    const q = query(collection(db, 'dept_forms'), orderBy('updatedAt', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DeptForm));
+};
+
+export const addDeptForm = async (form: Omit<DeptForm, 'id'>): Promise<void> => {
+    await addDoc(collection(db, 'dept_forms'), form);
+};
+
+export const updateDeptForm = async (id: string, updates: Partial<DeptForm>): Promise<void> => {
+    await updateDoc(doc(db, 'dept_forms', id), updates);
+};
+
+export const deleteDeptForm = async (id: string): Promise<void> => {
+    await deleteDoc(doc(db, 'dept_forms', id));
+};
+
 // --- COURSE CATALOG Operations ---
 
 export const getCourses = async (): Promise<Course[]> => {
@@ -822,7 +845,6 @@ export const deleteCourse = async (id: string): Promise<void> => {
     await deleteDoc(doc(db, 'courses', id));
 };
 
-// Helper to Seed some courses for demo
 export const seedCourses = async () => {
     const check = await getDocs(collection(db, 'courses'));
     if (!check.empty) return;
