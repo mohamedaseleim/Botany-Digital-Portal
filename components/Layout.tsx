@@ -23,7 +23,8 @@ import {
   Activity,
   Network,
   FileText,
-  Target // استيراد أيقونة الخطة البحثية
+  Target,
+  CalendarDays // استيراد أيقونة الإجازات
 } from 'lucide-react';
 import { User, UserRole } from '../types';
 
@@ -59,6 +60,14 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       icon: FileInput, 
       roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.DATA_ENTRY] 
     },
+    // --- رابط إدارة الإجازات (جديد) ---
+    { 
+      path: '/leaves', 
+      label: 'إدارة الإجازات', 
+      icon: CalendarDays, 
+      roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.EMPLOYEE] 
+    },
+    // --------------------------------
     { 
       path: '/councils', 
       label: 'مجالس القسم', 
@@ -77,14 +86,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       icon: Network, 
       roles: [UserRole.ADMIN, UserRole.STAFF] 
     },
-    // --- رابط الخطة البحثية (جديد) ---
     { 
       path: '/research-plan', 
       label: 'الخطة البحثية للقسم', 
       icon: Target, 
       roles: [UserRole.ADMIN, UserRole.STAFF, UserRole.STUDENT_PG, UserRole.STUDENT_UG] 
     },
-    // -------------------------------
     { 
       path: '/annual-report', 
       label: 'التقرير السنوي', 

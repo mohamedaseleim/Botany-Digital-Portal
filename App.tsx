@@ -19,7 +19,8 @@ import { Events } from './pages/Events';
 import { ActivityLogs } from './pages/ActivityLogs';
 import { DepartmentFormation } from './pages/DepartmentFormation';
 import { AnnualReportPage } from './pages/AnnualReport';
-import { ResearchPlanPage } from './pages/ResearchPlan'; // تم إضافة الاستيراد هنا
+import { ResearchPlanPage } from './pages/ResearchPlan'; 
+import { LeaveManagement } from './pages/LeaveManagement'; // 1. استيراد الصفحة الجديدة
 import { User, UserRole } from './types';
 import { loginUser, seedInitialData } from './services/dbService';
 import { Sprout, Users, Key, Loader2, ArrowLeft } from 'lucide-react';
@@ -27,7 +28,7 @@ import { Sprout, Users, Key, Loader2, ArrowLeft } from 'lucide-react';
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   
-  // Login Form State
+  // حالة نموذج تسجيل الدخول
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loggingIn, setLoggingIn] = useState(false);
@@ -166,7 +167,8 @@ const App: React.FC = () => {
           <Route path="/events" element={<Events user={user} />} />
           <Route path="/formation" element={<DepartmentFormation user={user} />} />
           <Route path="/annual-report" element={<AnnualReportPage user={user} />} />
-          <Route path="/research-plan" element={<ResearchPlanPage user={user} />} /> {/* المسار الجديد للخطة البحثية */}
+          <Route path="/research-plan" element={<ResearchPlanPage user={user} />} />
+          <Route path="/leaves" element={<LeaveManagement user={user} />} /> {/* 2. إضافة المسار الجديد */}
           <Route path="/activity-log" element={<ActivityLogs />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>

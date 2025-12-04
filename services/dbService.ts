@@ -20,7 +20,8 @@ import {
   CourseMaterial, JobOpportunity, UndergraduateStudent, AlumniMember, User, 
   UserRole, Asset, Announcement, ScheduleItem, LabBooking, Lab, LabClass, 
   GreenhousePlot, GreenhouseHistoryItem, DeptEvent, ActivityLogItem, Employee,
-  DeptCouncilFormation, DeptCommitteeFormation, AnnualReport, ResearchPlan, ResearchProposal
+  DeptCouncilFormation, DeptCommitteeFormation, AnnualReport, ResearchPlan, ResearchProposal,
+  LeaveRequest, LeaveStatus 
 } from '../types';
 
 // --- GOOGLE DRIVE UPLOAD SERVICE ---
@@ -637,6 +638,52 @@ export const addProposal = async (proposal: Omit<ResearchProposal, 'id' | 'creat
 
 export const updateProposalStatus = async (id: string, status: string, notes?: string) => {
     await updateDoc(doc(db, 'research_proposals', id), { status, adminNotes: notes });
+};
+
+// --- LEAVE MANAGEMENT Operations ---
+
+// إضافة طلب إجازة
+export const addLeaveRequest = async (request: Omit<LeaveRequest, 'id' | 'createdAt' | 'status'>): Promise<void> => {
+    await addDoc(collection(db, 'leave_requests'), {
+        ...request,
+        createdAt: Date.now(),
+        status: request.substituteId ? 'PENDING_SUBSTITUTE' : 'PENDING_HEAD' // إذا لا يوجد بديل (مثل رعاية الطفل)، تذهب للمدير مباشرة
+    });
+};
+
+// جلب إجازاتي
+export const getMyLeaves = async (userId: string): Promise<LeaveRequest[]> => {
+    const q = query(collection(db, 'leave_requests'), where('userId', '==', userId), orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LeaveRequest));
+};
+
+// جلب الطلبات التي تتطلب موافقتي كبديل
+export const getSubstituteRequests = async (userId: string): Promise<LeaveRequest[]> => {
+    const q = query(
+        collection(db, 'leave_requests'), 
+        where('substituteId', '==', userId), 
+        where('status', '==', 'PENDING_SUBSTITUTE')
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LeaveRequest));
+};
+
+// الرد على طلب البديل (قبول/رفض)
+export const respondToSubstituteRequest = async (requestId: string, accept: boolean, reason?: string) => {
+    const updateData = {
+        substituteStatus: accept ? 'ACCEPTED' : 'DECLINED',
+        status: accept ? 'PENDING_HEAD' : 'REJECTED', // إذا رفض البديل، يرفض الطلب أو يعاد للمستخدم (هنا سنرفضه للتبسيط)
+        substituteRejectionReason: reason || ''
+    };
+    await updateDoc(doc(db, 'leave_requests', requestId), updateData);
+};
+
+// جلب جميع الإجازات (للمدير)
+export const getAllLeaves = async (): Promise<LeaveRequest[]> => {
+    const q = query(collection(db, 'leave_requests'), orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LeaveRequest));
 };
 
 // --- Helper: Seed Research Plan ---
