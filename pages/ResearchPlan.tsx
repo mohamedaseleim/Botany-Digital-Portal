@@ -37,7 +37,7 @@ export const ResearchPlanPage: React.FC<ResearchPlanPageProps> = ({ user }) => {
     const [editingProposalId, setEditingProposalId] = useState<string | null>(null);
     const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
 
-    // Topic Editing State (New)
+    // Topic Editing State
     const [editingTopicData, setEditingTopicData] = useState<{axisId: string, topic: ResearchTopic} | null>(null);
 
     // Forms
@@ -63,14 +63,17 @@ export const ResearchPlanPage: React.FC<ResearchPlanPageProps> = ({ user }) => {
         const allPlans = await getAllResearchPlans();
         setArchivedPlans(allPlans.filter(p => p.status === 'ARCHIVED'));
 
-        if (isAdmin || activeTab === 'PROPOSALS') {
-            const props = await getProposals();
+        // Fetch proposals for admin or everyone (depending on requirements, usually admin sees all, user sees theirs)
+        const props = await getProposals();
+        if (isAdmin) {
             setProposals(props);
+        } else {
+            // User sees their own proposals
+            setProposals(props.filter(p => p.proposedById === user.id));
         }
     };
 
-    // --- Logic: Plan Content Management (Edit Topic/Axis) ---
-    
+    // --- Logic: Plan Content Management ---
     const handleUpdateTopic = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!activePlan || !editingTopicData) return;
@@ -118,18 +121,12 @@ export const ResearchPlanPage: React.FC<ResearchPlanPageProps> = ({ user }) => {
 
     const handleRequestRegistration = async (axisId: string, topicId: string, topicTitle: string) => {
         if (!activePlan) return;
-        
-        // Check if user is a student or allowed role
         if (user.role !== UserRole.STUDENT_PG && user.role !== UserRole.STAFF && !isAdmin) {
             alert('هذه الميزة متاحة للطلاب وأعضاء الهيئة فقط.');
             return;
         }
 
         if (!window.confirm(`هل تود إرسال طلب لتسجيل النقطة البحثية: "${topicTitle}"؟`)) return;
-
-        // In a real app, this would create a "Request" object. 
-        // Here we will simulate updating the topic status to "Reserved/Pending" or just log it.
-        // For simplicity in this demo, we'll mark it as IN_PROGRESS with the user's name pending approval logic.
         
         try {
             const updatedAxes = activePlan.axes.map(axis => {
@@ -154,7 +151,7 @@ export const ResearchPlanPage: React.FC<ResearchPlanPageProps> = ({ user }) => {
             await updateResearchPlan(activePlan.id, { axes: updatedAxes });
             await logActivity('طلب تسجيل نقطة بحثية', user.name, `طلب تسجيل النقطة: ${topicTitle}`);
             fetchData();
-            alert('تم إرسال طلب التسجيل بنجاح إلى منسق المحور ورئيس القسم.');
+            alert('تم إرسال طلب التسجيل بنجاح.');
         } catch (error) {
             alert('فشل إرسال الطلب');
         }
@@ -166,15 +163,16 @@ export const ResearchPlanPage: React.FC<ResearchPlanPageProps> = ({ user }) => {
         if (notes === null) return; 
 
         try {
+            // 1. Update proposal status
             await updateProposalStatus(id, action, notes || '');
             
-            // إذا تم الاعتماد، نقوم بإضافة النقطة (وربما المحور) إلى الخطة النشطة
+            // 2. If Approved, add to plan
             if (action === 'APPROVED' && proposal && activePlan) {
                 const newTopic: ResearchTopic = {
                     id: `topic-${Date.now()}`,
                     title: proposal.title,
                     goal: proposal.appliedGoal,
-                    status: 'AVAILABLE', // تبدأ كمتاحة للتسجيل
+                    status: 'AVAILABLE',
                     studentName: proposal.studentName || undefined,
                 };
 
@@ -185,17 +183,17 @@ export const ResearchPlanPage: React.FC<ResearchPlanPageProps> = ({ user }) => {
                 let updatedAxes = [...activePlan.axes];
 
                 if (proposal.axisId === 'NEW') {
-                    // إنشاء محور جديد
+                    // Create new axis
                     const newAxis: ResearchAxis = {
                         id: `axis-${Date.now()}`,
                         title: proposal.newAxisName || 'محور مستجد',
                         description: proposal.justification,
-                        coordinator: proposal.proposedBy, // مقدم المقترح يصبح المنسق مؤقتاً
+                        coordinator: proposal.proposedBy,
                         topics: [newTopic]
                     };
                     updatedAxes.push(newAxis);
                 } else {
-                    // الإضافة لمحور موجود
+                    // Add to existing axis
                     updatedAxes = updatedAxes.map(ax => {
                         if (ax.id === proposal.axisId) {
                             return { ...ax, topics: [...ax.topics, newTopic] };
@@ -204,18 +202,86 @@ export const ResearchPlanPage: React.FC<ResearchPlanPageProps> = ({ user }) => {
                     });
                 }
 
-                // تحديث الخطة
                 await updateResearchPlan(activePlan.id, { axes: updatedAxes });
-                await logActivity('إضافة للخطة البحثية', user.name, `تمت إضافة نقطة/محور جديد من المقترح: ${title}`);
+                await logActivity('إضافة للخطة البحثية', user.name, `تمت إضافة نقطة من المقترح: ${title}`);
             }
 
             await logActivity('قرار مقترح بحثي', user.name, `تم ${action} مقترح: ${title}`);
             fetchData();
-            alert(`تم تنفيذ الإجراء (${action}) بنجاح وتحديث الخطة إذا لزم الأمر.`);
+            alert(`تم تنفيذ الإجراء بنجاح.`);
 
         } catch (error) {
             console.error(error);
             alert('حدث خطأ أثناء تنفيذ الإجراء');
+        }
+    };
+
+    // --- Logic: Proposal CRUD ---
+    const handleInitProposal = () => {
+        setEditingProposalId(null);
+        setProposalForm({ title: '', axisId: '', newAxisName: '', type: 'MSc', justification: '', appliedGoal: '', studentName: '', hasStudent: false });
+        setIsProposalModalOpen(true);
+    };
+
+    const handleEditProposal = (prop: ResearchProposal) => {
+        setEditingProposalId(prop.id);
+        setProposalForm({
+            title: prop.title,
+            axisId: prop.axisId,
+            newAxisName: prop.newAxisName || '',
+            type: prop.type,
+            justification: prop.justification,
+            appliedGoal: prop.appliedGoal,
+            studentName: prop.studentName || '',
+            hasStudent: !!prop.studentName
+        });
+        setIsProposalModalOpen(true);
+    };
+
+    const handleDeleteProposal = async (id: string, title: string) => {
+        if (!window.confirm('هل أنت متأكد من حذف هذا المقترح؟')) return;
+        try {
+            // Using direct firestore delete for simplicity here, better to have a service function
+            await deleteDoc(doc(db, 'research_proposals', id));
+            await logActivity('حذف مقترح بحثي', user.name, `تم حذف مقترح: ${title}`);
+            fetchData();
+            alert('تم الحذف بنجاح');
+        } catch (error) {
+            console.error(error);
+            alert('فشل الحذف');
+        }
+    };
+
+    const handleProposalSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            const proposalData = {
+                title: proposalForm.title,
+                axisId: proposalForm.axisId,
+                newAxisName: proposalForm.axisId === 'NEW' ? proposalForm.newAxisName : undefined,
+                type: proposalForm.type as any,
+                justification: proposalForm.justification,
+                appliedGoal: proposalForm.appliedGoal,
+                studentName: proposalForm.hasStudent ? proposalForm.studentName : "",
+                proposedBy: user.name,
+                proposedById: user.id,
+                status: 'PENDING' as const,
+            };
+
+            if (editingProposalId) {
+                await updateDoc(doc(db, 'research_proposals', editingProposalId), proposalData);
+                await logActivity('تعديل مقترح بحثي', user.name, `تم تعديل مقترح: ${proposalForm.title}`);
+            } else {
+                await addProposal(proposalData);
+                await logActivity('تقديم مقترح بحثي', user.name, `تم تقديم مقترح جديد: ${proposalForm.title}`);
+            }
+            
+            setIsProposalModalOpen(false);
+            fetchData();
+            alert(editingProposalId ? 'تم التعديل بنجاح ✅' : 'تم إرسال المقترح للمراجعة بنجاح ✅');
+        } catch (error) {
+            console.error(error);
+            alert('حدث خطأ أثناء الإرسال');
         }
     };
 
@@ -229,7 +295,7 @@ export const ResearchPlanPage: React.FC<ResearchPlanPageProps> = ({ user }) => {
         activePlan.axes.forEach(axis => {
             axis.topics.forEach(topic => {
                 if (topic.title.includes(title) || title.includes(topic.title)) {
-                    setDuplicateWarning(`⚠️ تنبيه: يوجد موضوع مشابه بعنوان "${topic.title}" (${topic.status === 'COMPLETED' ? 'تمت مناقشته' : 'مسجل حالياً'}).`);
+                    setDuplicateWarning(`⚠️ تنبيه: يوجد موضوع مشابه بعنوان "${topic.title}"`);
                     found = true;
                 }
             });
@@ -291,60 +357,6 @@ export const ResearchPlanPage: React.FC<ResearchPlanPageProps> = ({ user }) => {
         fetchData();
     };
 
-    const handleInitProposal = () => {
-        setEditingProposalId(null);
-        setProposalForm({ title: '', axisId: '', newAxisName: '', type: 'MSc', justification: '', appliedGoal: '', studentName: '', hasStudent: false });
-        setIsProposalModalOpen(true);
-    };
-
-    const handleEditProposal = (prop: ResearchProposal) => {
-        setEditingProposalId(prop.id);
-        setProposalForm({
-            title: prop.title,
-            axisId: prop.axisId,
-            newAxisName: prop.newAxisName || '',
-            type: prop.type,
-            justification: prop.justification,
-            appliedGoal: prop.appliedGoal,
-            studentName: prop.studentName || '',
-            hasStudent: !!prop.studentName
-        });
-        setIsProposalModalOpen(true);
-    };
-
-    const handleDeleteProposal = async (id: string, title: string) => {
-        if (!window.confirm('حذف المقترح؟')) return;
-        await deleteDoc(doc(db, 'research_proposals', id));
-        fetchData();
-    };
-
-    const handleProposalSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        try {
-            const proposalData = {
-                title: proposalForm.title,
-                axisId: proposalForm.axisId,
-                newAxisName: proposalForm.axisId === 'NEW' ? proposalForm.newAxisName : undefined,
-                type: proposalForm.type as any,
-                justification: proposalForm.justification,
-                appliedGoal: proposalForm.appliedGoal,
-                studentName: proposalForm.hasStudent ? proposalForm.studentName : "",
-                proposedBy: user.name,
-                proposedById: user.id,
-                status: 'PENDING' as const,
-            };
-
-            if (editingProposalId) {
-                await updateDoc(doc(db, 'research_proposals', editingProposalId), proposalData);
-            } else {
-                await addProposal(proposalData);
-            }
-            setIsProposalModalOpen(false);
-            fetchData();
-            alert('تم الحفظ بنجاح');
-        } catch (error) { alert('خطأ'); }
-    };
-
     // --- Render Components ---
 
     const renderHeader = () => (
@@ -397,23 +409,12 @@ export const ResearchPlanPage: React.FC<ResearchPlanPageProps> = ({ user }) => {
 
     const renderBrowseTab = () => (
         <div className="space-y-6 animate-in fade-in">
-            {/* Search & Filter */}
             <div className="flex flex-col md:flex-row gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100 sticky top-0 z-10">
                 <div className="flex-1 relative">
                     <Search className="w-5 h-5 text-gray-400 absolute right-3 top-2.5"/>
-                    <input 
-                        type="text" 
-                        placeholder="ابحث عن موضوع بحثي..." 
-                        className="w-full border p-2 pr-10 rounded-lg outline-none focus:ring-2 focus:ring-green-500"
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                    />
+                    <input type="text" placeholder="ابحث عن موضوع بحثي..." className="w-full border p-2 pr-10 rounded-lg outline-none focus:ring-2 focus:ring-green-500" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}/>
                 </div>
-                <select 
-                    className="border p-2 rounded-lg outline-none bg-gray-50"
-                    value={statusFilter}
-                    onChange={e => setStatusFilter(e.target.value as any)}
-                >
+                <select className="border p-2 rounded-lg outline-none bg-gray-50" value={statusFilter} onChange={e => setStatusFilter(e.target.value as any)}>
                     <option value="ALL">كل الحالات</option>
                     <option value="AVAILABLE">🟢 متاحة</option>
                     <option value="IN_PROGRESS">🟡 جاري العمل</option>
@@ -421,7 +422,6 @@ export const ResearchPlanPage: React.FC<ResearchPlanPageProps> = ({ user }) => {
                 </select>
             </div>
 
-            {/* Axes Accordion */}
             <div className="space-y-4">
                 {activePlan?.axes.map(axis => {
                     const filteredTopics = axis.topics.filter(t => 
@@ -435,10 +435,7 @@ export const ResearchPlanPage: React.FC<ResearchPlanPageProps> = ({ user }) => {
 
                     return (
                         <div key={axis.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                            <div 
-                                className="p-4 bg-gray-50 flex justify-between items-center cursor-pointer hover:bg-gray-100 transition-colors"
-                                onClick={() => setExpandedAxis(expandedAxis === axis.id ? null : axis.id)}
-                            >
+                            <div className="p-4 bg-gray-50 flex justify-between items-center cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => setExpandedAxis(expandedAxis === axis.id ? null : axis.id)}>
                                 <div>
                                     <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                                         {expandedAxis === axis.id ? <ChevronUp className="w-5 h-5"/> : <ChevronDown className="w-5 h-5"/>}
@@ -449,9 +446,7 @@ export const ResearchPlanPage: React.FC<ResearchPlanPageProps> = ({ user }) => {
                                 <div className="flex items-center gap-4">
                                     <div className="text-center hidden md:block">
                                         <div className="text-xs text-gray-500">نسبة الإنجاز</div>
-                                        <div className="w-24 h-2 bg-gray-200 rounded-full mt-1 overflow-hidden">
-                                            <div className="h-full bg-green-500" style={{width: `${progress}%`}}></div>
-                                        </div>
+                                        <div className="w-24 h-2 bg-gray-200 rounded-full mt-1 overflow-hidden"><div className="h-full bg-green-500" style={{width: `${progress}%`}}></div></div>
                                     </div>
                                     <span className="bg-white border px-2 py-1 rounded text-sm font-mono">{filteredTopics.length} نقاط</span>
                                 </div>
@@ -459,57 +454,29 @@ export const ResearchPlanPage: React.FC<ResearchPlanPageProps> = ({ user }) => {
 
                             {expandedAxis === axis.id && (
                                 <div className="p-4 border-t border-gray-100">
-                                    <p className="text-gray-600 mb-4 bg-blue-50 p-3 rounded border-r-4 border-blue-400 text-sm">
-                                        💡 {axis.description}
-                                    </p>
+                                    <p className="text-gray-600 mb-4 bg-blue-50 p-3 rounded border-r-4 border-blue-400 text-sm">💡 {axis.description}</p>
                                     <div className="grid gap-3">
                                         {filteredTopics.map(topic => (
                                             <div key={topic.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                                                 <div className="flex-1">
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <h4 className="font-bold text-gray-800">{topic.title}</h4>
-                                                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                                                            topic.status === 'AVAILABLE' ? 'bg-green-100 text-green-700' :
-                                                            topic.status === 'IN_PROGRESS' ? 'bg-amber-100 text-amber-700' :
-                                                            'bg-blue-100 text-blue-700'
-                                                        }`}>
-                                                            {topic.status === 'AVAILABLE' ? 'متاحة للتسجيل' :
-                                                             topic.status === 'IN_PROGRESS' ? 'جاري العمل' : 'تمت المناقشة'}
+                                                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${topic.status === 'AVAILABLE' ? 'bg-green-100 text-green-700' : topic.status === 'IN_PROGRESS' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                            {topic.status === 'AVAILABLE' ? 'متاحة للتسجيل' : topic.status === 'IN_PROGRESS' ? 'جاري العمل' : 'تمت المناقشة'}
                                                         </span>
                                                     </div>
-                                                    <p className="text-sm text-gray-600 flex items-center gap-1">
-                                                        <Target className="w-3 h-3"/> الهدف: {topic.goal}
-                                                    </p>
-                                                    {topic.studentName && (
-                                                        <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                                                            <User className="w-3 h-3"/> مسجلة للطالب: {topic.studentName}
-                                                        </p>
-                                                    )}
+                                                    <p className="text-sm text-gray-600 flex items-center gap-1"><Target className="w-3 h-3"/> الهدف: {topic.goal}</p>
+                                                    {topic.studentName && <p className="text-xs text-gray-500 mt-1 flex items-center gap-1"><User className="w-3 h-3"/> مسجلة للطالب: {topic.studentName}</p>}
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     {isAdmin ? (
                                                         <>
-                                                            <button 
-                                                                onClick={() => setEditingTopicData({axisId: axis.id, topic: topic})}
-                                                                className="text-blue-500 hover:bg-blue-50 p-2 rounded"
-                                                                title="تعديل"
-                                                            >
-                                                                <Edit className="w-4 h-4"/>
-                                                            </button>
-                                                            <button 
-                                                                onClick={() => handleDeleteTopic(axis.id, topic.id, topic.title)}
-                                                                className="text-red-500 hover:bg-red-50 p-2 rounded"
-                                                                title="حذف النقطة"
-                                                            >
-                                                                <Trash2 className="w-4 h-4"/>
-                                                            </button>
+                                                            <button onClick={() => setEditingTopicData({axisId: axis.id, topic: topic})} className="text-blue-500 hover:bg-blue-50 p-2 rounded" title="تعديل"><Edit className="w-4 h-4"/></button>
+                                                            <button onClick={() => handleDeleteTopic(axis.id, topic.id, topic.title)} className="text-red-500 hover:bg-red-50 p-2 rounded" title="حذف"><Trash2 className="w-4 h-4"/></button>
                                                         </>
                                                     ) : (
                                                         topic.status === 'AVAILABLE' && (
-                                                            <button 
-                                                                onClick={() => handleRequestRegistration(axis.id, topic.id, topic.title)}
-                                                                className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 shadow-sm"
-                                                            >
+                                                            <button onClick={() => handleRequestRegistration(axis.id, topic.id, topic.title)} className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 shadow-sm">
                                                                 🙋‍♂️ طلب تسجيل
                                                             </button>
                                                         )
@@ -537,29 +504,15 @@ export const ResearchPlanPage: React.FC<ResearchPlanPageProps> = ({ user }) => {
                             <div className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-bold mb-1">عنوان النقطة</label>
-                                    <input 
-                                        type="text" 
-                                        className="w-full border p-2 rounded" 
-                                        value={editingTopicData.topic.title} 
-                                        onChange={e => setEditingTopicData({...editingTopicData, topic: {...editingTopicData.topic, title: e.target.value}})}
-                                    />
+                                    <input type="text" className="w-full border p-2 rounded" value={editingTopicData.topic.title} onChange={e => setEditingTopicData({...editingTopicData, topic: {...editingTopicData.topic, title: e.target.value}})} />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-bold mb-1">الهدف التطبيقي</label>
-                                    <input 
-                                        type="text" 
-                                        className="w-full border p-2 rounded" 
-                                        value={editingTopicData.topic.goal} 
-                                        onChange={e => setEditingTopicData({...editingTopicData, topic: {...editingTopicData.topic, goal: e.target.value}})}
-                                    />
+                                    <input type="text" className="w-full border p-2 rounded" value={editingTopicData.topic.goal} onChange={e => setEditingTopicData({...editingTopicData, topic: {...editingTopicData.topic, goal: e.target.value}})} />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-bold mb-1">الحالة</label>
-                                    <select 
-                                        className="w-full border p-2 rounded" 
-                                        value={editingTopicData.topic.status} 
-                                        onChange={e => setEditingTopicData({...editingTopicData, topic: {...editingTopicData.topic, status: e.target.value as any}})}
-                                    >
+                                    <select className="w-full border p-2 rounded" value={editingTopicData.topic.status} onChange={e => setEditingTopicData({...editingTopicData, topic: {...editingTopicData.topic, status: e.target.value as any}})}>
                                         <option value="AVAILABLE">متاحة</option>
                                         <option value="IN_PROGRESS">جاري العمل</option>
                                         <option value="COMPLETED">منجزة</option>
@@ -585,16 +538,12 @@ export const ResearchPlanPage: React.FC<ResearchPlanPageProps> = ({ user }) => {
                         <h3 className="text-xl font-bold text-purple-900 mb-2">لديك فكرة بحثية جديدة؟</h3>
                         <p className="text-purple-700 text-sm">تضمن حيوية الخطة البحثية من خلال إضافة نقاط مستجدة تواكب التطورات.</p>
                     </div>
-                    <button 
-                        onClick={handleInitProposal}
-                        className="bg-purple-700 hover:bg-purple-800 text-white px-6 py-3 rounded-xl shadow-md flex items-center gap-2 font-bold transition-transform hover:scale-105"
-                    >
+                    <button onClick={handleInitProposal} className="bg-purple-700 hover:bg-purple-800 text-white px-6 py-3 rounded-xl shadow-md flex items-center gap-2 font-bold transition-transform hover:scale-105">
                         <Plus className="w-5 h-5"/> اقتراح نقطة بحثية جديدة
                     </button>
                 </div>
             )}
 
-            {/* Proposals List */}
             <h3 className="font-bold text-gray-700 border-b pb-2 flex justify-between">
                 حالة المقترحات المقدمة
                 {isAdmin && <span className="text-xs bg-gray-100 px-2 py-1 rounded">{proposals.filter(p => p.status === 'PENDING').length} قيد الانتظار</span>}
@@ -632,15 +581,18 @@ export const ResearchPlanPage: React.FC<ResearchPlanPageProps> = ({ user }) => {
                                     <button onClick={() => handleProposalAction(prop.id, prop.title, 'REJECTED', prop)} className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700">رفض ❌</button>
                                 </>
                             ) : (
-                                // زر التعديل يظهر لصاحب المقترح في حالة "قيد المراجعة" أو "مطلوب تعديل"
                                 (prop.proposedById === user.id && (prop.status === 'PENDING' || prop.status === 'MODIFICATION_REQUESTED')) && (
                                     <div className="flex gap-2">
-                                        <button onClick={() => handleEditProposal(prop)} className="text-blue-500 hover:bg-blue-50 p-2 rounded flex items-center gap-1 text-sm font-bold border border-blue-200">
-                                            <Edit className="w-4 h-4"/> تعديل وإعادة إرسال
-                                        </button>
+                                        <button onClick={() => handleEditProposal(prop)} className="text-blue-500 hover:bg-blue-50 p-2 rounded flex items-center gap-1 text-sm font-bold border border-blue-200"><Edit className="w-4 h-4"/> تعديل وإعادة إرسال</button>
                                         <button onClick={() => handleDeleteProposal(prop.id, prop.title)} className="text-red-500 hover:bg-red-50 p-2 rounded"><Trash2 className="w-4 h-4"/></button>
                                     </div>
                                 )
+                            )}
+                            {/* زر حذف إضافي للمسؤولين لتنظيف المقترحات القديمة أو المرفوضة */}
+                            {isAdmin && prop.status !== 'PENDING' && (
+                                <button onClick={() => handleDeleteProposal(prop.id, prop.title)} className="text-gray-400 hover:text-red-500 p-1 text-xs flex items-center justify-end gap-1 mt-2">
+                                    <Trash2 className="w-3 h-3"/> حذف من السجل
+                                </button>
                             )}
                         </div>
                     </div>
@@ -727,21 +679,11 @@ export const ResearchPlanPage: React.FC<ResearchPlanPageProps> = ({ user }) => {
     return (
         <div className="space-y-6">
             {renderHeader()}
-
-            {/* Main Navigation */}
             <div className="flex border-b border-gray-200 bg-white rounded-t-xl overflow-x-auto">
-                <button onClick={() => setActiveTab('BROWSE')} className={`px-6 py-4 font-bold text-sm flex items-center gap-2 transition-colors ${activeTab === 'BROWSE' ? 'text-green-700 border-b-2 border-green-700 bg-green-50' : 'text-gray-500 hover:text-green-600'}`}>
-                    <Search className="w-4 h-4"/> تصفح الخطة
-                </button>
-                <button onClick={() => setActiveTab('PROPOSALS')} className={`px-6 py-4 font-bold text-sm flex items-center gap-2 transition-colors ${activeTab === 'PROPOSALS' ? 'text-green-700 border-b-2 border-green-700 bg-green-50' : 'text-gray-500 hover:text-green-600'}`}>
-                    <FileText className="w-4 h-4"/> المقترحات الجديدة
-                </button>
-                <button onClick={() => setActiveTab('ANALYTICS')} className={`px-6 py-4 font-bold text-sm flex items-center gap-2 transition-colors ${activeTab === 'ANALYTICS' ? 'text-green-700 border-b-2 border-green-700 bg-green-50' : 'text-gray-500 hover:text-green-600'}`}>
-                    <BarChart3 className="w-4 h-4"/> التحليلات والجودة
-                </button>
-                <button onClick={() => setActiveTab('ARCHIVE')} className={`px-6 py-4 font-bold text-sm flex items-center gap-2 transition-colors ${activeTab === 'ARCHIVE' ? 'text-green-700 border-b-2 border-green-700 bg-green-50' : 'text-gray-500 hover:text-green-600'}`}>
-                    <Archive className="w-4 h-4"/> الأرشيف
-                </button>
+                <button onClick={() => setActiveTab('BROWSE')} className={`px-6 py-4 font-bold text-sm flex items-center gap-2 transition-colors ${activeTab === 'BROWSE' ? 'text-green-700 border-b-2 border-green-700 bg-green-50' : 'text-gray-500 hover:text-green-600'}`}><Search className="w-4 h-4"/> تصفح الخطة</button>
+                <button onClick={() => setActiveTab('PROPOSALS')} className={`px-6 py-4 font-bold text-sm flex items-center gap-2 transition-colors ${activeTab === 'PROPOSALS' ? 'text-green-700 border-b-2 border-green-700 bg-green-50' : 'text-gray-500 hover:text-green-600'}`}><FileText className="w-4 h-4"/> المقترحات الجديدة</button>
+                <button onClick={() => setActiveTab('ANALYTICS')} className={`px-6 py-4 font-bold text-sm flex items-center gap-2 transition-colors ${activeTab === 'ANALYTICS' ? 'text-green-700 border-b-2 border-green-700 bg-green-50' : 'text-gray-500 hover:text-green-600'}`}><BarChart3 className="w-4 h-4"/> التحليلات والجودة</button>
+                <button onClick={() => setActiveTab('ARCHIVE')} className={`px-6 py-4 font-bold text-sm flex items-center gap-2 transition-colors ${activeTab === 'ARCHIVE' ? 'text-green-700 border-b-2 border-green-700 bg-green-50' : 'text-gray-500 hover:text-green-600'}`}><Archive className="w-4 h-4"/> الأرشيف</button>
             </div>
 
             <div className="bg-white p-6 rounded-b-xl shadow-sm border border-t-0 border-gray-200 min-h-[400px]">
