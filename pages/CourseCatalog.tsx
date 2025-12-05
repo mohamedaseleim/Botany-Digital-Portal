@@ -393,10 +393,22 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ user }) => {
                                         <div>
                                             <label className="block text-sm font-bold mb-1">الشعبة (للتخصص)</label>
                                             <select className="w-full border p-2 rounded bg-white" value={formData.division} onChange={e => setFormData({...formData, division: e.target.value})}>
-                                                <option value="General">عامة / مشتركة</option>
-                                                <option value="Plant Pathology">أمراض نبات</option>
-                                                <option value="Genetics">وراثة</option>
-                                                <option value="Physiology">فسيولوجي</option>
+                                                <option value="General">عامة</option>
+                                                <option value="Plant Pathology">أمراض النبات</option>
+                                                <option value="Agronomy">المحاصيل</option>
+                                                <option value="Horticulture">البساتين</option>
+                                                <option value="Soils">الأراضى والمياة</option>
+                                                <option value="Agricultural Zoology">الحيوان الزراعى</option>
+                                                <option value="Food Industries">الصناعات الغذائية</option>
+                                                <option value="Dairy Science">الألبان</option>
+                                                <option value="Animal Production">الإنتاج الحيوانى</option>
+                                                <option value="Poultry Production">الإنتاج الداجنى</option>
+                                                <option value="Economic Entomology">الحشرات الاقتصادية</option>
+                                                <option value="Pesticides">المبيدات</option>
+                                                <option value="Agricultural Economics">الإقتصاد الزراعى</option>
+                                                <option value="Agricultural Extension">الإرشاد الزراعي</option>
+                                                <option value="Rural Sociology">المجتمع الريفي</option>
+                                                <option value="Agricultural Cooperation">التعاون الزراعى</option>
                                             </select>
                                         </div>
                                     </>
