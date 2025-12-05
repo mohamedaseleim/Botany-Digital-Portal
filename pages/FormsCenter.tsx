@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
     FileText, Search, Download, Eye, Plus, UploadCloud, 
     Trash2, Save, X, Loader2, FileType, Layers, 
-    Printer, ExternalLink, FolderOpen
+    Printer, ExternalLink, FolderOpen, Plane // <--- تم إضافة Plane هنا
 } from 'lucide-react';
 import { User, UserRole, DeptForm, FormCategory } from '../types';
 import { getDeptForms, addDeptForm, deleteDeptForm, uploadFileToDrive, logActivity } from '../services/dbService';
@@ -39,8 +39,12 @@ export const FormsCenter: React.FC<FormsCenterProps> = ({ user }) => {
 
     const fetchData = async () => {
         setLoading(true);
-        const data = await getDeptForms();
-        setForms(data);
+        try {
+            const data = await getDeptForms();
+            setForms(data);
+        } catch (error) {
+            console.error("Error fetching forms:", error);
+        }
         setLoading(false);
     };
 
@@ -109,7 +113,7 @@ export const FormsCenter: React.FC<FormsCenterProps> = ({ user }) => {
 
     const filteredForms = forms.filter(f => 
         (activeCategory === 'ALL' || f.category === activeCategory) &&
-        (f.title.includes(searchTerm) || f.description?.includes(searchTerm))
+        ((f.title || '').includes(searchTerm) || (f.description || '').includes(searchTerm))
     );
 
     return (
