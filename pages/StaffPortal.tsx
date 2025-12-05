@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { 
     UserCircle, Mail, Phone, Edit, Trash2, Plus, 
-    Search, GraduationCap, BookOpen, Save, X, Loader2, UploadCloud, Award, Briefcase
+    Search, GraduationCap, BookOpen, Save, X, Loader2, UploadCloud, Award, Briefcase,
+    FileText, CheckCircle2
 } from 'lucide-react';
 import { StaffMember, User, UserRole, StaffDocuments, StaffDocItem, CoursePortfolio } from '../types';
 import { getStaff, updateStaff, deleteStaff, addStaff, logActivity } from '../services/dbService';
 
-// 1. تم جعل المستخدم إجبارياً (Required) لضمان عمل الصلاحيات
 interface StaffPortalProps {
     user: User;
 }
@@ -18,16 +18,16 @@ export const StaffPortal: React.FC<StaffPortalProps> = ({ user }) => {
     const [activeTab, setActiveTab] = useState<'FACULTY' | 'ASSISTANT'>('FACULTY');
     const [submitting, setSubmitting] = useState(false);
 
-    // Modal State
-    const [isModalOpen, setIsModalOpen] = useState(false); // (جديد) مودال البيانات الأساسية
-    const [isDigitalProfileOpen, setIsDigitalProfileOpen] = useState(false); // مودال الملف الرقمي (Portfolio)
+    // Modal States
+    const [isModalOpen, setIsModalOpen] = useState(false); // (إضافة) نافذة البيانات الأساسية
+    const [isDigitalProfileOpen, setIsDigitalProfileOpen] = useState(false); 
     const [editingMember, setEditingMember] = useState<StaffMember | null>(null);
     
     // Form States
-    const [basicFormData, setBasicFormData] = useState<Partial<StaffMember>>({});
+    const [basicFormData, setBasicFormData] = useState<Partial<StaffMember>>({}); // (إضافة) نموذج البيانات الأساسية
     const [digitalProfileForm, setDigitalProfileForm] = useState<StaffDocuments>({});
     const [saving, setSaving] = useState(false);
-    const [isEditingDigital, setIsEditingDigital] = useState(false);
+    const [isEditingDigital, setIsEditingDigital] = useState(false); // (إضافة) حالة التعديل داخل الملف الرقمي
 
     const isAdmin = user.role === UserRole.ADMIN;
 
@@ -42,27 +42,25 @@ export const StaffPortal: React.FC<StaffPortalProps> = ({ user }) => {
         setLoading(false);
     };
 
-    // --- (جديد) منطق الصلاحيات ---
-    // السماح بالتعديل: للمدير أو لصاحب الحساب فقط
+    // --- (إضافة) منطق الصلاحيات ---
     const canEdit = (targetMemberId: string) => {
+        // المدير يعدل أي شخص
         if (isAdmin) return true;
+        // العضو يعدل نفسه فقط
         if (user.role === UserRole.STAFF && user.id === targetMemberId) return true;
         return false;
     };
 
-    // السماح بالحذف والإضافة: للمدير فقط
-    const canManage = isAdmin; 
+    const canManage = isAdmin; // للمدير فقط (إضافة وحذف)
     // -----------------------------
 
-    // --- (جديد) Handlers: Basic Data (Add/Edit/Delete) ---
+    // --- (إضافة) دوال التعامل مع البيانات الأساسية (إضافة/تعديل/حذف) ---
 
     const handleOpenModal = (member?: StaffMember) => {
         if (member) {
-            // Edit Mode
             setEditingMember(member);
             setBasicFormData(member);
         } else {
-            // Add Mode
             setEditingMember(null);
             setBasicFormData({
                 name: '', rank: '', specialization: '', email: '', phone: '', subRole: 'FACULTY'
@@ -104,13 +102,12 @@ export const StaffPortal: React.FC<StaffPortalProps> = ({ user }) => {
         }
     };
 
-    // --- Handlers: Digital Profile (Portfolio) ---
+    // --- دوال التعامل مع الملف الرقمي ---
 
     const openDigitalProfile = (member: StaffMember) => {
         setEditingMember(member);
         setDigitalProfileForm({
             ...member.documents,
-            // Ensure arrays are initialized
             promotionDecisions: member.documents?.promotionDecisions || [],
             adminPositions: member.documents?.adminPositions || [],
             extensionDecisions: member.documents?.extensionDecisions || [],
@@ -154,7 +151,6 @@ export const StaffPortal: React.FC<StaffPortalProps> = ({ user }) => {
         }));
     };
 
-    // Course Portfolio handlers
     const handleAddCourse = (courseName: string) => {
          if (!courseName) return;
          const newCourse: CoursePortfolio = { courseName };
@@ -186,7 +182,10 @@ export const StaffPortal: React.FC<StaffPortalProps> = ({ user }) => {
         try {
             await updateStaff(editingMember.id, { documents: digitalProfileForm });
             await logActivity('تحديث ملف رقمي', user.name, `تحديث الملف الرقمي للدكتور: ${editingMember.name}`);
+            
+            // تحديث الحالة المحلية لتنعكس التغييرات فوراً
             setStaffMembers(prev => prev.map(m => m.id === editingMember.id ? { ...m, documents: digitalProfileForm } : m));
+            
             alert('تم حفظ الملف الرقمي بنجاح');
             setIsEditingDigital(false);
         } catch (error) {
@@ -196,7 +195,6 @@ export const StaffPortal: React.FC<StaffPortalProps> = ({ user }) => {
         }
     };
 
-    // تصفية النتائج
     const filteredStaff = staffMembers.filter(s => 
         ((s.subRole || 'FACULTY') === activeTab) &&
         (s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -214,7 +212,7 @@ export const StaffPortal: React.FC<StaffPortalProps> = ({ user }) => {
                     <p className="text-gray-500 text-sm">أعضاء هيئة التدريس والهيئة المعاونة بقسم النبات</p>
                 </div>
                 
-                {/* (إضافة) زر إضافة عضو جديد يظهر للمدير فقط */}
+                {/* (إضافة) زر الإضافة يظهر للمدير فقط */}
                 {canManage && (
                     <button 
                         onClick={() => handleOpenModal()}
@@ -304,10 +302,15 @@ export const StaffPortal: React.FC<StaffPortalProps> = ({ user }) => {
                             </div>
                         </div>
                     ))}
+                    {filteredStaff.length === 0 && (
+                        <div className="col-span-full text-center py-12 text-gray-400">
+                            لا يوجد أعضاء مطابقين للبحث.
+                        </div>
+                    )}
                 </div>
             )}
 
-            {/* (جديد) Modal 1: Basic Info (Edit Name, Rank, etc.) */}
+            {/* (إضافة) Modal 1: Basic Info (Add/Edit) */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl animate-in fade-in zoom-in-95">
@@ -330,7 +333,6 @@ export const StaffPortal: React.FC<StaffPortalProps> = ({ user }) => {
                             <div><label className="block text-sm font-bold text-gray-700 mb-1">البريد</label><input type="email" className="w-full border p-2 rounded-lg" value={basicFormData.email || ''} onChange={e => setBasicFormData({...basicFormData, email: e.target.value})} /></div>
                             <div><label className="block text-sm font-bold text-gray-700 mb-1">الهاتف</label><input type="tel" className="w-full border p-2 rounded-lg" value={basicFormData.phone || ''} onChange={e => setBasicFormData({...basicFormData, phone: e.target.value})} /></div>
                             
-                            {/* تغيير الفئة (للمدير فقط) */}
                             {canManage && (
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-1">الفئة</label>
